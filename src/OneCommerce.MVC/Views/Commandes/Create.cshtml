@@ -15,12 +15,12 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-5">
-                    <img class="card-img-top" src="@fichierEndpoint/images/@Model.Produit.Image" data-src="holder.js/100px225?theme=thumb&bg=55595c&fg=eceeef&text=Thumbnail" alt="Card image cap">
+                    <img class="card-img-top" src="@fichierEndpoint/images/@Model.Produit?.Image" data-src="holder.js/100px225?theme=thumb&bg=55595c&fg=eceeef&text=Thumbnail" alt="Card image cap">
                 </div>
                 <div class="col-md-7">
-                    <h1 class="jumbotron-heading">@Model.Produit.Nom</h1>
-                    <p class="lead text-muted">Prix unitaire @Model.Produit.Prix</p>
-                    <p class="lead text-muted">@Model.Produit.Description</p>
+                    <h1 class="jumbotron-heading">@Model.Produit?.Nom</h1>
+                    <p class="lead text-muted">Prix unitaire @Model.Produit?.Prix</p>
+                    <p class="lead text-muted">@Model.Produit?.Description</p>
 
                     
                         <form asp-action="Create">
@@ -42,9 +42,9 @@
                                 <input asp-for="AdresseLivraison" class="form-control" />
                                 <span asp-validation-for="AdresseLivraison" class="text-danger"></span>
                             </div>
-                            <input type="hidden" asp-for="IdProduit" value="@Model.Produit.Id" class="form-control" />
-                            <input type="hidden" asp-for="NomProduit" value="@Model.Produit.Nom" class="form-control" />
-                            <input type="hidden" asp-for="PrixUnitaire" value="@Model.Produit.Prix" class="form-control" />
+                            <input type="hidden" asp-for="IdProduit" value="@Model.Produit?.Id" class="form-control" />
+                            <input type="hidden" asp-for="NomProduit" value="@Model.Produit?.Nom" class="form-control" />
+                            <input type="hidden" asp-for="PrixUnitaire" value="@Model.Produit?.Prix" class="form-control" />
 
                             <br />
                             <div class="form-group">

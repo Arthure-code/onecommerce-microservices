@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using NuGet.Versioning;
 using OneCommerce.MVC.Interfaces;
 using OneCommerce.MVC.Models;
 
@@ -28,14 +27,18 @@ namespace OneCommerce.MVC.Controllers
 
         public async Task<IActionResult> Create(int id)
         {
-            Produit produit = await _produitService.GetProduitById(id);
+            Produit? produit = await _produitService.GetProduitById(id);
+
+            if (produit?.Id == null)
+            {
+                return NotFound();
+            }
 
             var commande = new Commande
             {
                 IdProduit = produit.Id.Value,
                 Produit = produit,
-                PrixUnitaire = produit.Prix,
-              
+                PrixUnitaire = produit.Prix
             };
 
             return View(commande);
@@ -46,22 +49,17 @@ namespace OneCommerce.MVC.Controllers
         {
             if (!ModelState.IsValid)
             {
-                Produit produit = await _produitService.GetProduitById(commande.IdProduit);
-                commande.Produit = produit;
-                return View(commande); 
-            
+                commande.Produit = await _produitService.GetProduitById(commande.IdProduit);
+                return View(commande);
             }
 
-            // Validation du NumeroFideliteClient via le service Fidelite
-            var fidelite = await _fideliteService.GetFideliteByNumeroAsync(commande.NumeroFideliteClient);
+            Fidelite? fidelite = await _fideliteService.GetFideliteByNumeroAsync(commande.NumeroFideliteClient);
 
-            if (string.IsNullOrEmpty(fidelite.NumeroFidelite))
+            if (string.IsNullOrEmpty(fidelite?.NumeroFidelite))
             {
+                commande.Produit = await _produitService.GetProduitById(commande.IdProduit);
 
-                Produit produit = await _produitService.GetProduitById(commande.IdProduit);
-                commande.Produit = produit;
-
-                ModelState.AddModelError("NumeroFideliteClient", "Ce numéro de fidélité n’existe pas.");
+                ModelState.AddModelError("NumeroFideliteClient", "Ce numéro de fidélité n'existe pas.");
                 return View(commande);
             }
 

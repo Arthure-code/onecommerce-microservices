@@ -9,65 +9,79 @@ namespace OneCommandes.API.Tests.Controllers
 {
     public class CommandesControllerTests
     {
-        private static Commande UneCommande() => new Commande
+        private readonly Mock<IServiceBusHelper> _serviceBusHelper;
+        private readonly Mock<ILogger<CommandesController>> _logger;
+        private readonly CommandesController _controller;
+        private readonly Commande _commande;
+        private readonly Commande _autreCommande;
+
+        public CommandesControllerTests()
         {
-            IdProduit = 3,
-            NomProduit = "T-shirt imprimé noir",
-            NumeroFideliteClient = "ONE-1001",
-            Quantite = 2,
-            PrixUnitaire = 30.50m,
-            AdresseLivraison = "123 Rue Sainte-Catherine, Montréal"
-        };
+            _serviceBusHelper = new Mock<IServiceBusHelper>();
+            _logger = new Mock<ILogger<CommandesController>>();
+            _controller = new CommandesController(_serviceBusHelper.Object, _logger.Object);
+
+            _commande = new Commande
+            {
+                IdProduit = 3,
+                NomProduit = "T-shirt imprimé noir",
+                NumeroFideliteClient = "ONE-100001",
+                Quantite = 2,
+                PrixUnitaire = 30.50m,
+                AdresseLivraison = "123 Rue Sainte-Catherine, Montréal"
+            };
+
+            _autreCommande = new Commande
+            {
+                IdProduit = 4,
+                NomProduit = "T-shirt gris femme",
+                NumeroFideliteClient = "ONE-100002",
+                Quantite = 1,
+                PrixUnitaire = 10.20m,
+                AdresseLivraison = "456 Boulevard Laurier, Québec"
+            };
+        }
 
         [Fact]
         public void GetAll_RendLesCommandes()
         {
-            //Etant donné un service de messagerie qui n'est jamais appelé
-            var messagerie = new Mock<IServiceBusHelper>();
-            var journal = new Mock<ILogger<CommandesController>>();
-            var controleur = new CommandesController(messagerie.Object, journal.Object);
+            // Given un contrôleur dont la messagerie ne sera pas sollicitée
 
-            //Lorsque
-            ActionResult<IEnumerable<Commande>> resultat = controleur.GetAll();
+            // When
+            ActionResult<IEnumerable<Commande>> resultat = _controller.GetAll();
 
-            //Alors
-            var reponse = Assert.IsType<OkObjectResult>(resultat.Result);
-            var commandes = Assert.IsAssignableFrom<IEnumerable<Commande>>(reponse.Value);
+            // Then
+            OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
+            IEnumerable<Commande> commandes = Assert.IsAssignableFrom<IEnumerable<Commande>>(reponse.Value);
             Assert.NotEmpty(commandes);
-            messagerie.Verify(m => m.EnvoyerMessage(It.IsAny<Commande>()), Times.Never);
+            _serviceBusHelper.Verify(m => m.EnvoyerMessage(It.IsAny<Commande>()), Times.Never);
         }
 
         [Fact]
         public async Task Create_RefuseUneCommandeInvalide()
         {
-            //Etant donné un modèle que la validation a rejeté
-            var messagerie = new Mock<IServiceBusHelper>();
-            var journal = new Mock<ILogger<CommandesController>>();
-            var controleur = new CommandesController(messagerie.Object, journal.Object);
-            controleur.ModelState.AddModelError("NomProduit", "Le nom du produit est obligatoire");
+            // Given un modèle que la validation a rejeté
+            _controller.ModelState.AddModelError("NomProduit", "Le nom du produit est obligatoire");
 
-            //Lorsque
-            ActionResult<Commande> resultat = await controleur.Create(UneCommande());
+            // When
+            ActionResult<Commande> resultat = await _controller.Create(_commande);
 
-            //Alors rien n'est créé, et rien ne part sur la file
+            // Then rien n'est créé, et rien ne part sur la file
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
-            messagerie.Verify(m => m.EnvoyerMessage(It.IsAny<Commande>()), Times.Never);
+            _serviceBusHelper.Verify(m => m.EnvoyerMessage(It.IsAny<Commande>()), Times.Never);
         }
 
         [Fact]
         public async Task Create_DonneUnNumeroUneDateEtUnTotal()
         {
-            //Etant donné une commande complète
-            var messagerie = new Mock<IServiceBusHelper>();
-            var journal = new Mock<ILogger<CommandesController>>();
-            var controleur = new CommandesController(messagerie.Object, journal.Object);
+            // Given une commande complète
 
-            //Lorsque
-            ActionResult<Commande> resultat = await controleur.Create(UneCommande());
+            // When
+            ActionResult<Commande> resultat = await _controller.Create(_commande);
 
-            //Alors la commande revient avec ce que le service a posé
-            var cree = Assert.IsType<CreatedAtActionResult>(resultat.Result);
-            var commande = Assert.IsType<Commande>(cree.Value);
+            // Then la commande revient avec ce que le service a posé
+            CreatedAtActionResult cree = Assert.IsType<CreatedAtActionResult>(resultat.Result);
+            Commande commande = Assert.IsType<Commande>(cree.Value);
             Assert.StartsWith("ONE-CMD-", commande.NumeroCommande, StringComparison.Ordinal);
             Assert.Equal(61.00m, commande.PrixTotal);
             Assert.Equal(DateTime.UtcNow.Date, commande.DateCommande.Date);
@@ -76,34 +90,69 @@ namespace OneCommandes.API.Tests.Controllers
         [Fact]
         public async Task Create_TransmetLaCommandeAuServiceBus()
         {
-            //Etant donné une commande complète
-            var messagerie = new Mock<IServiceBusHelper>();
-            var journal = new Mock<ILogger<CommandesController>>();
-            var controleur = new CommandesController(messagerie.Object, journal.Object);
-            Commande envoyee = UneCommande();
+            // Given une messagerie qui accepte le message
+            _serviceBusHelper
+                .Setup(m => m.EnvoyerMessage(It.IsAny<Commande>()))
+                .Returns(Task.CompletedTask)
+                .Verifiable();
 
-            //Lorsque
-            await controleur.Create(envoyee);
+            // When
+            await _controller.Create(_commande);
 
-            //Alors elle part sur la file, une fois, avec son numéro
-            messagerie.Verify(m => m.EnvoyerMessage(It.Is<Commande>(c => c.NumeroCommande.StartsWith("ONE-CMD-", StringComparison.Ordinal))), Times.Once);
+            // Then elle part une fois, avec le numéro que le service a donné
+            _serviceBusHelper.Verify(
+                m => m.EnvoyerMessage(It.Is<Commande>(c => c.NumeroCommande.StartsWith("ONE-CMD-", StringComparison.Ordinal))),
+                Times.Once);
+            _serviceBusHelper.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task Create_TransmetLaCommandeTelleQuEnregistree()
+        {
+            // Given une messagerie qui retient ce qu'on lui confie
+            Commande? transmise = null;
+            _serviceBusHelper
+                .Setup(m => m.EnvoyerMessage(It.IsAny<Commande>()))
+                .Callback<Commande>(c => transmise = c)
+                .Returns(Task.CompletedTask);
+
+            // When
+            ActionResult<Commande> resultat = await _controller.Create(_commande);
+
+            // Then ce qui part sur la file est ce qui revient à l'appelant
+            CreatedAtActionResult cree = Assert.IsType<CreatedAtActionResult>(resultat.Result);
+            Commande rendue = Assert.IsType<Commande>(cree.Value);
+            Assert.NotNull(transmise);
+            Assert.Equal(rendue.NumeroCommande, transmise!.NumeroCommande);
+            Assert.Equal(rendue.PrixTotal, transmise.PrixTotal);
+        }
+
+        [Fact]
+        public async Task Create_RemonteLEchecDeLaMessagerie()
+        {
+            // Given une messagerie indisponible
+            _serviceBusHelper
+                .Setup(m => m.EnvoyerMessage(It.IsAny<Commande>()))
+                .ThrowsAsync(new InvalidOperationException("Service Bus injoignable"));
+
+            // When la commande est créée
+
+            // Then l'appelant n'obtient pas un succès silencieux
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _controller.Create(_commande));
         }
 
         [Fact]
         public async Task Create_DonneUnNumeroDifferentAChaqueCommande()
         {
-            //Etant donné deux commandes de suite
-            var messagerie = new Mock<IServiceBusHelper>();
-            var journal = new Mock<ILogger<CommandesController>>();
-            var controleur = new CommandesController(messagerie.Object, journal.Object);
+            // Given deux commandes de suite
 
-            //Lorsque
-            var premiere = (CreatedAtActionResult)(await controleur.Create(UneCommande())).Result!;
-            var seconde = (CreatedAtActionResult)(await controleur.Create(UneCommande())).Result!;
+            // When
+            CreatedAtActionResult premiere = Assert.IsType<CreatedAtActionResult>((await _controller.Create(_commande)).Result);
+            CreatedAtActionResult seconde = Assert.IsType<CreatedAtActionResult>((await _controller.Create(_autreCommande)).Result);
 
-            //Alors
-            var une = Assert.IsType<Commande>(premiere.Value);
-            var autre = Assert.IsType<Commande>(seconde.Value);
+            // Then
+            Commande une = Assert.IsType<Commande>(premiere.Value);
+            Commande autre = Assert.IsType<Commande>(seconde.Value);
             Assert.NotEqual(une.NumeroCommande, autre.NumeroCommande);
             Assert.NotEqual(une.Id, autre.Id);
         }

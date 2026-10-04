@@ -41,11 +41,17 @@ namespace OneCommerce.MVC.Controllers
         {
             if(ModelState.IsValid)
             {
+                if (produit.FichierImage == null)
+                {
+                    ModelState.AddModelError(nameof(Produit.FichierImage), "L'image est obligatoire.");
+                    return View(produit);
+                }
+
                 List<Produit> produits = await _produitService.GetProduits();
 
-                produit.Id = produits.Max(p => p.Id) + 1;
+                produit.Id = produits.Count > 0 ? produits.Max(p => p.Id) + 1 : 1;
 
-                var extension = Path.GetExtension(produit.FichierImage?.FileName);
+                string extension = Path.GetExtension(produit.FichierImage.FileName);
 
                 produit.Image = $"Image{produit.Id}{extension}";
 
@@ -62,7 +68,7 @@ namespace OneCommerce.MVC.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
-            Produit produit = await _produitService.GetProduitById(id);
+            Produit? produit = await _produitService.GetProduitById(id);
 
             if (produit == null)
                 return NotFound();
@@ -81,7 +87,7 @@ namespace OneCommerce.MVC.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
-            Produit produit = await _produitService.GetProduitById(id);
+            Produit? produit = await _produitService.GetProduitById(id);
 
             if (produit == null)
                 return NotFound();
