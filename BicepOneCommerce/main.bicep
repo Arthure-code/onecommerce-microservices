@@ -80,3 +80,17 @@ module storage 'modules/storage.bicep' = {
     applicationTag: applicationTag
   }
 }
+
+@description('Noms des applications créées, suffixe compris, par plan')
+output appNamesCreated array = [
+  for (config, i) in appServiceConfigs: {
+    plan: config.planNameSuffix
+    apps: appService[i].outputs.appNamesCreated
+  }
+]
+
+@description('Adresse du serveur SQL')
+output sqlServerFqdn string = database.outputs.sqlServerFqdn
+
+@description('Nom du compte de stockage créé')
+output storageAccountName string = storage.outputs.storageAccountNameCreated

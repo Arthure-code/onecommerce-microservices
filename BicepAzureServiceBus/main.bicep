@@ -5,11 +5,15 @@
 ])
 param location string
 
-@description('Environnement (dev, prod)')
-param environment string 
+@description('Environnement de déploiement')
+@allowed([
+  'Dev'
+  'Prod'
+])
+param environment string
 
 @description('Préfixe du nom du Service Bus')
-var serviceBusName = 'sb-onecommerce-${environment}' 
+var serviceBusName = 'sb-onecommerce-${toLower(environment)}'
 
 @description('Niveau tarifaire')
 @allowed([
@@ -57,3 +61,6 @@ module serviceBus 'modules/serviceBus.bicep' = {
     queues: queues
   }
 }
+
+@description('Adresse du namespace Service Bus')
+output serviceBusEndpoint string = serviceBus.outputs.serviceBusEndpoint

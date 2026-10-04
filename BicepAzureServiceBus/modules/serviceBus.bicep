@@ -26,7 +26,7 @@ param applicationTag string
 param queues array
 
 // Namespace du Service Bus
-resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = if (createNamespace) {
+resource serviceBus 'Microsoft.ServiceBus/namespaces@2026-01-01' = if (createNamespace) {
   name: serviceBusName
   location: location
   sku: {
@@ -36,12 +36,15 @@ resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = if (c
   tags: {
     Application: applicationTag
   }
-  properties: {}
+  properties: {
+    minimumTlsVersion: '1.2'
+    publicNetworkAccess: 'Enabled'
+  }
 }
 
 // Files d’attente
 
-resource serviceBusQueues 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = [
+resource serviceBusQueues 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' = [
   for queue in queues: {
     parent: serviceBus
     name: queue.name
@@ -51,3 +54,6 @@ resource serviceBusQueues 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-pre
     }
   }
 ]
+
+@description('Adresse du namespace, vide si le namespace existait déjà')
+output serviceBusEndpoint string = serviceBus.?properties.serviceBusEndpoint ?? ''

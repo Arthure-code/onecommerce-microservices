@@ -45,11 +45,20 @@ resource webApps 'Microsoft.Web/sites@2025-03-01' = [
   for appName in appNames: {
     name: 'webapp-${appName}-${randomSuffix}'
     location: location
-    properties: {
-      serverFarmId: appServicePlan.id
+    identity: {
+      type: 'SystemAssigned'
     }
     tags: {
       Application: applicationTag
+    }
+    properties: {
+      serverFarmId: appServicePlan.id
+      httpsOnly: true
+      siteConfig: {
+        minTlsVersion: '1.2'
+        ftpsState: 'Disabled'
+        http20Enabled: true
+      }
     }
   }
 ]
@@ -60,11 +69,20 @@ resource stagingSlots 'Microsoft.Web/sites/slots@2025-03-01' = [
     parent: webApps[i]
     name: 'staging'
     location: location
-    properties: {
-      serverFarmId: appServicePlan.id
+    identity: {
+      type: 'SystemAssigned'
     }
     tags: {
       Application: applicationTag
+    }
+    properties: {
+      serverFarmId: appServicePlan.id
+      httpsOnly: true
+      siteConfig: {
+        minTlsVersion: '1.2'
+        ftpsState: 'Disabled'
+        http20Enabled: true
+      }
     }
   }
 ]
@@ -134,3 +152,6 @@ resource autoScale 'Microsoft.Insights/autoscalesettings@2022-10-01' = if (Nivea
     ]
   }
 }
+
+@description('Noms des applications créées, suffixe compris')
+output appNamesCreated array = [for (appName, i) in appNames: webApps[i].name]

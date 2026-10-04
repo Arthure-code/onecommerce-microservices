@@ -7,6 +7,11 @@ param applicationTag string
 @description('Nom du compte storage')
 var storageAccountName = 'stone${uniqueString(resourceGroup().id)}'
 
+@description('Tags portés par les ressources du module')
+var tags = {
+  Application: applicationTag
+}
+
 // Compte de stockage
 
 @description('Compte de stockage ZRS')
@@ -17,11 +22,30 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
   sku: {
     name: 'Standard_ZRS'
   }
+  identity: {
+    type: 'SystemAssigned'
+  }
+  tags: tags
   properties: {
     accessTier: 'Hot'
-  }
-  tags: {
-    Application: applicationTag
+    supportsHttpsTrafficOnly: true
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: false
+    // Le chiffrement d'infrastructure ne s'active qu'à la création du compte.
+    encryption: {
+      keySource: 'Microsoft.Storage'
+      requireInfrastructureEncryption: true
+      services: {
+        blob: {
+          enabled: true
+          keyType: 'Account'
+        }
+        queue: {
+          enabled: true
+          keyType: 'Account'
+        }
+      }
+    }
   }
 }
 
@@ -38,7 +62,7 @@ resource imagesContainer 'Microsoft.Storage/storageAccounts/blobServices/contain
   parent: blobService
   name: 'images'
   properties: {
-    publicAccess: 'None' // privé
+    publicAccess: 'None'
   }
 }
 
@@ -55,3 +79,9 @@ resource commandeQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2
   parent: queueService
   name: 'q-commande'
 }
+
+@description('Nom du compte créé')
+output storageAccountNameCreated string = storageAccount.name
+
+@description('Adresse du point de terminaison Blob')
+output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob
