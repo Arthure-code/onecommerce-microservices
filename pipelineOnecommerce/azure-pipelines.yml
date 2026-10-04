@@ -4,6 +4,8 @@ trigger:
 variables:
   buildConfiguration: "Release"
   serviceConnection: "az-serviceprincipal"
+  resourceGroupDev: "rg-onecommerce-dev"
+  resourceGroupProd: "rg-onecommerce-prod"
 
 # BUILD
 
@@ -40,15 +42,12 @@ stages:
         parameters:
           environment: Dev
           serviceConnection: $(serviceConnection)
+          resourceGroup: $(resourceGroupDev)
           apps:
             - name: OneFichiers
-              webApp: webapp-OneFichiers-et4k
             - name: OneCommandes
-              webApp: webapp-OneCommandes-et4k
             - name: OneFidelite
-              webApp: webapp-OneFidelite-et4k
             - name: OneProduit
-              webApp: webapp-OneProduit-et4k
 
   # DEPLOY MVC DEV
 
@@ -61,9 +60,8 @@ stages:
         parameters:
           environment: Dev
           serviceConnection: $(serviceConnection)
-          webApp: webapp-OneCommerceMVC-et4k
-          artifactFolder: OneCommerceMVC
-
+          resourceGroup: $(resourceGroupDev)
+          appName: OneCommerceMVC
 
   # DEPLOY APIs PROD
 
@@ -76,15 +74,12 @@ stages:
         parameters:
           environment: Prod
           serviceConnection: $(serviceConnection)
+          resourceGroup: $(resourceGroupProd)
           apps:
             - name: OneFichiers
-              webApp: webapp-OneFichiers-zddl
             - name: OneCommandes
-              webApp: webapp-OneCommandes-zddl
             - name: OneFidelite
-              webApp: webapp-OneFidelite-zddl
             - name: OneProduit
-              webApp: webapp-OneProduit-zddl
 
   # DEPLOY MVC PROD
 
@@ -97,5 +92,5 @@ stages:
         parameters:
           environment: Prod
           serviceConnection: $(serviceConnection)
-          webApp: webapp-OneCommerceMVC-zddl
-          artifactFolder: OneCommerceMVC
+          resourceGroup: $(resourceGroupProd)
+          appName: OneCommerceMVC

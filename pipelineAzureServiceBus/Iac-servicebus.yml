@@ -13,7 +13,7 @@ stages:
     jobs:
       - template: sb-template/deploy-bicep.yml
         parameters:
-          environment: dev
+          environment: Dev
           resourceGroup: rg-onecommerce-dev
           serviceConnection: $(serviceConnection)
           location: $(location)
@@ -30,7 +30,7 @@ stages:
     jobs:
       - template: sb-template/deploy-bicep.yml
         parameters:
-          environment: production
+          environment: Prod
           resourceGroup: rg-onecommerce-prod
           serviceConnection: $(serviceConnection)
           location: $(location)

@@ -1,27 +1,57 @@
 parameters:
-  serviceConnection: ""
-  environment: ""
-  webApp: ""
-  artifactFolder: ""
+  - name: serviceConnection
+    type: string
+  - name: environment
+    type: string
+  - name: resourceGroup
+    type: string
+  - name: appName
+    type: string
 
 jobs:
   - deployment: Deploy_MVC_${{ parameters.environment }}
     displayName: Deploy MVC (${{ parameters.environment }})
     environment: ${{ parameters.environment }}
+    pool:
+      vmImage: ubuntu-latest
     strategy:
       runOnce:
         deploy:
           steps:
             - task: DownloadBuildArtifacts@0
+              displayName: Récupérer les artefacts
               inputs:
                 artifactName: drop
                 downloadPath: $(System.ArtifactsDirectory)
 
+            # Bicep suffixe les noms d'applications avec quatre caractères
+            # dérivés du groupe de ressources, inconnus avant le déploiement.
+            - task: AzureCLI@2
+              displayName: Retrouver l'application de ${{ parameters.appName }}
+              inputs:
+                azureSubscription: ${{ parameters.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  set -euo pipefail
+                  nom=$(az webapp list \
+                    --resource-group ${{ parameters.resourceGroup }} \
+                    --query "[?starts_with(name, 'webapp-${{ parameters.appName }}-')].name | [0]" \
+                    --output tsv)
+                  if [ -z "$nom" ]; then
+                    echo "Aucune application webapp-${{ parameters.appName }}-* dans ${{ parameters.resourceGroup }}."
+                    echo "Lancer Iac-pipeline.yml avant ce pipeline."
+                    exit 1
+                  fi
+                  echo "Application trouvée : $nom"
+                  echo "##vso[task.setvariable variable=webAppName]$nom"
+
             - task: AzureRmWebAppDeployment@4
+              displayName: Déployer ${{ parameters.appName }}
               inputs:
                 ConnectionType: AzureRM
                 azureSubscription: ${{ parameters.serviceConnection }}
                 appType: webApp
-                WebAppName: ${{ parameters.webApp }}
+                WebAppName: $(webAppName)
                 package: >
-                  $(System.ArtifactsDirectory)/drop/${{ parameters.artifactFolder }}/*.MVC.zip
+                  $(System.ArtifactsDirectory)/drop/${{ parameters.appName }}/*.MVC.zip

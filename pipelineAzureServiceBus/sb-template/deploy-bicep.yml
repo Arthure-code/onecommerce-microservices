@@ -18,6 +18,8 @@ jobs:
   - deployment: Deploy_Bicep_${{ parameters.environment }}
     displayName: Deploy Bicep (${{ parameters.environment }})
     environment: ${{ parameters.environment }}
+    pool:
+      vmImage: ubuntu-latest
     strategy:
       runOnce:
         deploy:
