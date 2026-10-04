@@ -1,0 +1,74 @@
+﻿@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@model OneCommerce.MVC.Models.Commande
+
+@{
+    ViewData["Title"] = "Create";
+    var fichierEndpoint = Configuration["FichiersImageEndpoint"];
+}
+
+<h3>Veuillez remplir les informations pour votre commande</h3>
+<div>
+    <hr />
+    <p class="text-danger">@ViewBag.Erreur</p>
+    <section class="jumbotron text-center">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-5">
+                    <img class="card-img-top" src="@fichierEndpoint/images/@Model.Produit.Image" data-src="holder.js/100px225?theme=thumb&bg=55595c&fg=eceeef&text=Thumbnail" alt="Card image cap">
+                </div>
+                <div class="col-md-7">
+                    <h1 class="jumbotron-heading">@Model.Produit.Nom</h1>
+                    <p class="lead text-muted">Prix unitaire @Model.Produit.Prix</p>
+                    <p class="lead text-muted">@Model.Produit.Description</p>
+
+                    
+                        <form asp-action="Create">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                            <div class="form-group">
+                                <label asp-for="NumeroFideliteClient" class="control-label"></label>
+                                <input asp-for="NumeroFideliteClient" class="form-control" />
+                                <span asp-validation-for="NumeroFideliteClient" class="text-danger"></span>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="Quantite" class="control-label"></label>
+                                <input asp-for="Quantite" class="form-control" />
+                                <span asp-validation-for="Quantite" class="text-danger"></span>
+                            </div>
+
+                            <div class="form-group">
+                                <label asp-for="AdresseLivraison" class="control-label"></label>
+                                <input asp-for="AdresseLivraison" class="form-control" />
+                                <span asp-validation-for="AdresseLivraison" class="text-danger"></span>
+                            </div>
+                            <input type="hidden" asp-for="IdProduit" value="@Model.Produit.Id" class="form-control" />
+                            <input type="hidden" asp-for="NomProduit" value="@Model.Produit.Nom" class="form-control" />
+                            <input type="hidden" asp-for="PrixUnitaire" value="@Model.Produit.Prix" class="form-control" />
+
+                            <br />
+                            <div class="form-group">
+                                <input type="submit" value="Commander" class="btn btn-primary" />
+                            </div>
+                        </form>
+                    
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    @* <section class="jumbotron text-center">
+        <div class="container">
+<div class="row">
+   
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+        </div>
+    </section> *@
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

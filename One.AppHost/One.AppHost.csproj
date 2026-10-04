@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>b1582baf-5c2f-446a-b35d-ec8699a1e3d8</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\OneCommandes.API\OneCommandes.API.csproj" />
+    <ProjectReference Include="..\src\OneCommerce.MVC\OneCommerce.MVC.csproj" />
+    <ProjectReference Include="..\src\OneFichiers.API\OneFichiers.API.csproj" />
+    <ProjectReference Include="..\src\OneFidelite.API\OneFidelite.API.csproj" />
+    <ProjectReference Include="..\src\OneProduit.API\OneProduit.API.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,39 @@
+trigger: none
+
+variables:
+  serviceConnection: "az-serviceprincipal"
+  location: "CanadaCentral"
+
+
+# INFRA DEV
+
+stages:
+  - stage: InfraDev
+    displayName: Infra Dev Azure Service Bus
+    jobs:
+      - template: sb-template/deploy-bicep.yml
+        parameters:
+          environment: dev
+          resourceGroup: rg-onecommerce-dev
+          serviceConnection: $(serviceConnection)
+          location: $(location)
+          skuName: Standard
+          createNamespace: true
+          templateFile: BicepAzureServiceBus/main.bicep
+
+  # INFRA PROD
+
+  - stage: InfraProd
+    displayName: Infra Prod Azure Service Bus
+    dependsOn: InfraDev
+    condition: succeeded()
+    jobs:
+      - template: sb-template/deploy-bicep.yml
+        parameters:
+          environment: production
+          resourceGroup: rg-onecommerce-prod
+          serviceConnection: $(serviceConnection)
+          location: $(location)
+          skuName: Standard
+          createNamespace: true
+          templateFile: BicepAzureServiceBus/main.bicep

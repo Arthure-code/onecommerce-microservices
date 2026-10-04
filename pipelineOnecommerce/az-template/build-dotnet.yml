@@ -1,0 +1,45 @@
+parameters:
+  buildConfiguration: "Release"
+  projects: []
+
+steps:
+  - task: DotNetCoreCLI@2
+    displayName: Restaurer les packages
+    inputs:
+      command: restore
+      projects: "**/src/**/*.csproj"
+
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      command: build
+      projects: "**/src/**/*.csproj"
+      arguments: "--no-restore --configuration ${{ parameters.buildConfiguration }}"
+
+  - task: DotNetCoreCLI@2
+    displayName: Tests unitaires
+    inputs:
+      command: test
+      projects: "**/tests/**/*Tests.csproj"
+      arguments: "--configuration ${{ parameters.buildConfiguration }}"
+
+  # Publication 
+  - ${{ each project in parameters.projects }}:
+    - task: DotNetCoreCLI@2
+      displayName: Publish ${{ project.name }}
+      inputs:
+        command: publish
+        projects: ${{ project.path }}
+        publishWebProjects: false
+        arguments: >
+          --no-build
+          --configuration ${{ parameters.buildConfiguration }}
+          --output $(Build.ArtifactStagingDirectory)/${{ project.name }}
+        zipAfterPublish: true
+
+  # Publication des artefacts
+  - task: PublishBuildArtifacts@1
+    displayName: Publication des artefacts
+    inputs:
+      PathtoPublish: $(Build.ArtifactStagingDirectory)
+      ArtifactName: drop

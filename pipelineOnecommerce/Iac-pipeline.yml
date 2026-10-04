@@ -1,0 +1,35 @@
+trigger: none
+
+variables:
+  serviceConnection: "az-serviceprincipal"
+  location: "canadacentral"
+
+
+# INFRA DEV
+
+stages:
+  - stage: InfraDev 
+    displayName: Infra Dev OneCommerce
+    jobs:
+      - template: az-template/deploy-bicep.yml
+        parameters:
+          environment: Dev
+          resourceGroup: rg-onecommerce-dev
+          serviceConnection: $(serviceConnection)
+          location: $(location)
+          templateFile: BicepOneCommerce/main.bicep
+
+  # INFRA PROD
+
+  - stage: InfraProd 
+    displayName: Infra Prod OneCommerce
+    dependsOn: InfraDev
+    condition: succeeded()
+    jobs:
+      - template: az-template/deploy-bicep.yml
+        parameters:
+          environment: Prod
+          resourceGroup: rg-onecommerce-prod
+          serviceConnection: $(serviceConnection)
+          location: $(location)
+          templateFile: BicepOneCommerce/main.bicep

@@ -1,0 +1,55 @@
+﻿@model IEnumerable<OneCommerce.MVC.Models.Fidelite>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">S'inscrire au programme de fidelité</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.NumeroFidelite)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.NomClient)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CourrielClient)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Telephone)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Points)
+            </th>
+            
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.NumeroFidelite)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.NomClient)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CourrielClient)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Telephone)
+            </td>
+             <td>
+                    @Html.DisplayFor(modelItem => item.Points)
+              </td>
+            
+        </tr>
+}
+    </tbody>
+</table>

@@ -1,0 +1,32 @@
+﻿@model IEnumerable<OneCommerce.MVC.Models.Commande>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h2>Liste des Commandes</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Numéro</th>
+            <th>Produit</th>
+            <th>Quantité</th>
+            <th>Prix Total</th>
+            <th>Client</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var cmd in Model)
+        {
+            <tr>
+                <td>@cmd.NumeroCommande</td>
+                <td>@cmd.NomProduit</td>
+                <td>@cmd.Quantite</td>
+                <td>@cmd.PrixTotal $</td>
+                <td>@cmd.NumeroFideliteClient</td>
+                <td>@cmd.DateCommande.ToShortDateString()</td>
+            </tr>
+        }
+    </tbody>
+</table>

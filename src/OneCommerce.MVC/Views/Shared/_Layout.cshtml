@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - OneCommerce.MVC</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/OneCommerce.MVC.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="site-header sticky-top py-1">
+            <div class="container d-flex flex-column flex-md-row justify-content-between">
+               
+                <a class="py-2 d-none d-md-inline-block" asp-controller="Produits" asp-action="Index">Catalogue de produits</a>
+                
+                <a class="py-2 d-none d-md-inline-block" asp-controller="Produits" asp-action="Create">Ajouter un produit</a>
+                <a class="py-2 d-none d-md-inline-block" asp-controller="Commandes" asp-action="Index">Historique de commandes</a>
+                <a class="py-2 d-none d-md-inline-block" asp-controller="Fidelite" asp-action="Index">Programme de fidelité</a>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; TPs Déploiement Infonuagique
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

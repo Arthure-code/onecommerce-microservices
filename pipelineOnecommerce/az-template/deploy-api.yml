@@ -1,0 +1,27 @@
+parameters:
+  serviceConnection: ""
+  environment: ""
+  apps: []
+
+jobs:
+  - ${{ each app in parameters.apps }}:
+      - deployment: Deploy_${{ app.name }}_${{ parameters.environment }}
+        displayName: Deploy ${{ app.name }} (${{ parameters.environment }})
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@0
+                  inputs:
+                    artifactName: drop
+                    downloadPath: $(System.ArtifactsDirectory)
+
+                - task: AzureRmWebAppDeployment@4
+                  inputs:
+                    ConnectionType: AzureRM
+                    azureSubscription: ${{ parameters.serviceConnection }}
+                    appType: webApp
+                    WebAppName: ${{ app.webApp }}
+                    package: >
+                      $(System.ArtifactsDirectory)/drop/${{ app.name }}/*.API.zip

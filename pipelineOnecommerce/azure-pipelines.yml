@@ -1,0 +1,101 @@
+trigger:
+  - main
+
+variables:
+  buildConfiguration: "Release"
+  serviceConnection: "az-serviceprincipal"
+
+# BUILD
+
+stages:
+  - stage: Build
+    displayName: Build & Tests
+    jobs:
+      - job: Build
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - template: az-template/build-dotnet.yml
+            parameters:
+              buildConfiguration: $(buildConfiguration)
+              projects:
+                - name: OneFichiers
+                  path: "**/OneFichiers.API/**/*.csproj"
+                - name: OneCommandes
+                  path: "**/OneCommandes.API/**/*.csproj"
+                - name: OneFidelite
+                  path: "**/OneFidelite.API/**/*.csproj"
+                - name: OneProduit
+                  path: "**/OneProduit.API/**/*.csproj"
+                - name: OneCommerceMVC
+                  path: "**/OneCommerce.MVC/**/*.csproj"
+
+  # DEPLOY APIs DEV
+
+  - stage: DeployApiDev
+    displayName: Deploy APIs Dev OneCommerce
+    dependsOn: Build
+    jobs:
+      - template: az-template/deploy-api.yml
+        parameters:
+          environment: Dev
+          serviceConnection: $(serviceConnection)
+          apps:
+            - name: OneFichiers
+              webApp: webapp-OneFichiers-et4k
+            - name: OneCommandes
+              webApp: webapp-OneCommandes-et4k
+            - name: OneFidelite
+              webApp: webapp-OneFidelite-et4k
+            - name: OneProduit
+              webApp: webapp-OneProduit-et4k
+
+  # DEPLOY MVC DEV
+
+  - stage: DeployMvcDev
+    displayName: Deploy MVC Dev OneCommerce
+    dependsOn: DeployApiDev
+    condition: succeeded()
+    jobs:
+      - template: az-template/deploy-mvc.yml
+        parameters:
+          environment: Dev
+          serviceConnection: $(serviceConnection)
+          webApp: webapp-OneCommerceMVC-et4k
+          artifactFolder: OneCommerceMVC
+
+
+  # DEPLOY APIs PROD
+
+  - stage: DeployApiProd
+    displayName: Deploy APIs Prod OneCommerce
+    dependsOn: DeployMvcDev
+    condition: succeeded()
+    jobs:
+      - template: az-template/deploy-api.yml
+        parameters:
+          environment: Prod
+          serviceConnection: $(serviceConnection)
+          apps:
+            - name: OneFichiers
+              webApp: webapp-OneFichiers-zddl
+            - name: OneCommandes
+              webApp: webapp-OneCommandes-zddl
+            - name: OneFidelite
+              webApp: webapp-OneFidelite-zddl
+            - name: OneProduit
+              webApp: webapp-OneProduit-zddl
+
+  # DEPLOY MVC PROD
+
+  - stage: DeployMvcProd
+    displayName: Deploy MVC Prod OneCommerce
+    dependsOn: DeployApiProd
+    condition: succeeded()
+    jobs:
+      - template: az-template/deploy-mvc.yml
+        parameters:
+          environment: Prod
+          serviceConnection: $(serviceConnection)
+          webApp: webapp-OneCommerceMVC-zddl
+          artifactFolder: OneCommerceMVC

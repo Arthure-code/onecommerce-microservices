@@ -1,0 +1,6 @@
+@OneProduit.API_HostAddress = http://localhost:5217
+
+GET {{OneProduit.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

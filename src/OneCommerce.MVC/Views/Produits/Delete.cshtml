@@ -1,0 +1,36 @@
+﻿@model OneCommerce.MVC.Models.Produit
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+
+@{
+    ViewData["Title"] = "Delete";
+
+    var fichierEndpoint = Configuration["FichiersImageEndpoint"];
+}
+
+<h3>Voulez-vous vraimment supprimer le produit ci-dessous ?</h3>
+<div>
+<hr />
+    <p class="text-danger">@ViewBag.Erreur</p>
+    <section class="jumbotron text-center">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-5">
+                    <img class="card-img-top" src="@fichierEndpoint/images/@Model.Image" data-src="holder.js/100px225?theme=thumb&bg=55595c&fg=eceeef&text=Thumbnail" alt="Card image cap">
+                </div>
+                <div class="col-md-7">
+                    <h1 class="jumbotron-heading">@Model.Nom</h1>
+                    <p class="lead text-muted">@Model.Description</p>
+                </div>
+            </div>
+           
+        </div>
+    </section>
+
+ <div class="row">
+                <form asp-action="Delete">
+        <input type="submit" value="Supprimer" class="btn btn-danger" /> |
+        <a asp-action="Index" class="btn btn-outline-secondary">Liste des produits</a>
+    </form>
+ </div>
+</div>

@@ -1,0 +1,27 @@
+parameters:
+  serviceConnection: ""
+  environment: ""
+  webApp: ""
+  artifactFolder: ""
+
+jobs:
+  - deployment: Deploy_MVC_${{ parameters.environment }}
+    displayName: Deploy MVC (${{ parameters.environment }})
+    environment: ${{ parameters.environment }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - task: DownloadBuildArtifacts@0
+              inputs:
+                artifactName: drop
+                downloadPath: $(System.ArtifactsDirectory)
+
+            - task: AzureRmWebAppDeployment@4
+              inputs:
+                ConnectionType: AzureRM
+                azureSubscription: ${{ parameters.serviceConnection }}
+                appType: webApp
+                WebAppName: ${{ parameters.webApp }}
+                package: >
+                  $(System.ArtifactsDirectory)/drop/${{ parameters.artifactFolder }}/*.MVC.zip

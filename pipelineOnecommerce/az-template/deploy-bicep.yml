@@ -1,0 +1,42 @@
+parameters:
+  - name: serviceConnection
+    type: string
+  - name: environment
+    type: string
+  - name: resourceGroup
+    type: string
+  - name: location
+    type: string
+  - name: templateFile
+    type: string
+
+jobs:
+  - deployment: Deploy_Bicep_${{ parameters.environment }}
+    displayName: Deploy Bicep (${{ parameters.environment }})
+    environment: ${{ parameters.environment }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - checkout: self
+            
+            - task: AzureCLI@2
+              displayName: Deploy Bicep
+              inputs:
+                azureSubscription: ${{ parameters.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  az group create \
+                    --name ${{ parameters.resourceGroup }} \
+                    --location ${{ parameters.location }}
+
+                  az deployment group create \
+                    --resource-group ${{ parameters.resourceGroup }} \
+                    --template-file ${{ parameters.templateFile }} \
+                    --parameters \
+                      NiveauPlan='${{ parameters.environment }}' \
+                      location='${{ parameters.location }}' \
+                      applicationTag='OneCommerce' \
+                      sqlAdminLogin='sqladmin' \
+                      sqlAdminPassword='$(sqlAdminPassword)'
