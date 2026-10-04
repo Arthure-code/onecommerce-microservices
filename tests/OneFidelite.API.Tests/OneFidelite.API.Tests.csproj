@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\OneFichiers.API\OneFichiers.API.csproj" />
+    <ProjectReference Include="..\..\src\OneFidelite.API\OneFidelite.API.csproj" />
   </ItemGroup>
 
 </Project>
