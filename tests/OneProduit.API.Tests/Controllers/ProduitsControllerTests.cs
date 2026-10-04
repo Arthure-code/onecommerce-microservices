@@ -10,6 +10,9 @@ namespace OneProduit.API.Tests.Controllers
     {
         private readonly ProduitsController _controller;
         private readonly Produit _produit;
+        private readonly Produit _produitAModifier;
+        private readonly Produit _modification;
+        private readonly Produit _produitASupprimer;
         private readonly int _identifiantAuCatalogue;
         private readonly int _identifiantAbsentDuCatalogue;
 
@@ -26,6 +29,37 @@ namespace OneProduit.API.Tests.Controllers
                 Quantite = 3,
                 Image = "image1.png",
                 Vedette = false
+            };
+
+            _produitAModifier = new Produit
+            {
+                Id = 777,
+                Nom = "Chandail avant",
+                Description = "Chandail avant modification",
+                Prix = 12.00m,
+                Quantite = 1,
+                Image = "image777.png"
+            };
+
+            _modification = new Produit
+            {
+                Id = 777,
+                Nom = "Chandail apres",
+                Description = "Chandail apres modification",
+                Prix = 18.75m,
+                Quantite = 5,
+                Image = string.Empty,
+                Vedette = true
+            };
+
+            _produitASupprimer = new Produit
+            {
+                Id = 778,
+                Nom = "Chandail de passage",
+                Description = "Chandail ajoute puis retire",
+                Prix = 9.00m,
+                Quantite = 1,
+                Image = "image778.png"
             };
 
             _identifiantAuCatalogue = 3;
@@ -106,6 +140,78 @@ namespace OneProduit.API.Tests.Controllers
             Produit produit = Assert.IsType<Produit>(cree.Value);
             Assert.Equal(_produit.Nom, produit.Nom);
             Assert.Equal(_produit.Id, cree.RouteValues!["id"]);
+        }
+
+
+        [Fact]
+        public void UpdateProduit_ReecritLeProduitSansToucherALImage()
+        {
+            // Given un produit du catalogue
+            _controller.AddProduit(_produitAModifier);
+
+            // When il est modifié sans nouvelle image
+            ActionResult<Produit> resultat = _controller.UpdateProduit(_produitAModifier.Id, _modification);
+
+            // Then les champs changent et l'image reste celle d'avant
+            OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
+            Produit produit = Assert.IsType<Produit>(reponse.Value);
+            Assert.Equal(_modification.Nom, produit.Nom);
+            Assert.Equal(_modification.Prix, produit.Prix);
+            Assert.Equal(_modification.Quantite, produit.Quantite);
+            Assert.True(produit.Vedette);
+            Assert.Equal("image777.png", produit.Image);
+        }
+
+        [Fact]
+        public void UpdateProduit_RendNonTrouveQuandLeProduitNExistePas()
+        {
+            // Given un identifiant absent du catalogue
+
+            // When
+            ActionResult<Produit> resultat = _controller.UpdateProduit(_identifiantAbsentDuCatalogue, _modification);
+
+            // Then
+            Assert.IsType<NotFoundObjectResult>(resultat.Result);
+        }
+
+        [Fact]
+        public void UpdateProduit_RefuseUnProduitInvalide()
+        {
+            // Given un modèle que la validation a rejeté
+            _controller.ModelState.AddModelError(nameof(Produit.Nom), "Le nom est obligatoire");
+
+            // When
+            ActionResult<Produit> resultat = _controller.UpdateProduit(_identifiantAuCatalogue, _modification);
+
+            // Then
+            Assert.IsType<BadRequestObjectResult>(resultat.Result);
+        }
+
+        [Fact]
+        public void DeleteProduit_RetireLeProduitDuCatalogue()
+        {
+            // Given un produit que le catalogue porte
+            _controller.AddProduit(_produitASupprimer);
+
+            // When
+            IActionResult resultat = _controller.DeleteProduit(_produitASupprimer.Id);
+
+            // Then il ne s'y trouve plus
+            Assert.IsType<NoContentResult>(resultat);
+            ActionResult<Produit> relecture = _controller.GetProduit(_produitASupprimer.Id);
+            Assert.IsType<NotFoundObjectResult>(relecture.Result);
+        }
+
+        [Fact]
+        public void DeleteProduit_RendNonTrouveQuandLeProduitNExistePas()
+        {
+            // Given un identifiant absent du catalogue
+
+            // When
+            IActionResult resultat = _controller.DeleteProduit(_identifiantAbsentDuCatalogue);
+
+            // Then
+            Assert.IsType<NotFoundObjectResult>(resultat);
         }
 
         [Theory]

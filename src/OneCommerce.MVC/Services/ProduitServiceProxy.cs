@@ -32,6 +32,23 @@ namespace OneCommerce.MVC.Services
             }
             return null;
         }
+
+        public async Task<Produit?> UpdateProduit(Produit produit)
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/produits/{produit.Id}", produit);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<Produit>();
+            }
+            return null;
+        }
+
+        public async Task<bool> DeleteProduit(int id)
+        {
+            var response = await _httpClient.DeleteAsync($"api/produits/{id}");
+
+            return response.IsSuccessStatusCode;
+        }
     }
 
 }

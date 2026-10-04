@@ -79,9 +79,30 @@ namespace OneCommerce.MVC.Controllers
         [HttpPost]
         public async Task<IActionResult> Edit(Produit produit)
         {
-            
+            if (!ModelState.IsValid)
+            {
+                return View(produit);
+            }
 
-            return View(produit);
+            // Une nouvelle image remplace l'ancienne ; sans dépôt, le produit
+            // garde celle qu'il avait.
+            if (produit.FichierImage != null)
+            {
+                string extension = Path.GetExtension(produit.FichierImage.FileName);
+                produit.Image = $"Image{produit.Id}{extension}";
+
+                await _fichiersService.Upload(produit.FichierImage, produit.Image);
+            }
+
+            Produit? modifie = await _produitService.UpdateProduit(produit);
+
+            if (modifie == null)
+            {
+                ModelState.AddModelError(string.Empty, "La modification du produit a échoué.");
+                return View(produit);
+            }
+
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpGet]
@@ -98,10 +119,20 @@ namespace OneCommerce.MVC.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(Produit produit)
         {
-           
+            if (produit.Id == null)
+            {
+                return NotFound();
+            }
+
+            bool supprime = await _produitService.DeleteProduit(produit.Id.Value);
+
+            if (!supprime)
+            {
+                ModelState.AddModelError(string.Empty, "La suppression du produit a échoué.");
+                return View(produit);
+            }
 
             return RedirectToAction(nameof(Index));
-          
         }
 
 

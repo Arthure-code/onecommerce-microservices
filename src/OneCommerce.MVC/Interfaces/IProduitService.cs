@@ -7,5 +7,7 @@ namespace OneCommerce.MVC.Interfaces
         Task<List<Produit>> GetProduits();
         Task<Produit?> GetProduitById(int id);
         Task<Produit?> AddProduit(Produit produit);
+        Task<Produit?> UpdateProduit(Produit produit);
+        Task<bool> DeleteProduit(int id);
     }
 }
