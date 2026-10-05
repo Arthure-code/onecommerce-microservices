@@ -1,6 +1,15 @@
 parameters:
-  buildConfiguration: "Release"
-  projects: []
+  # La configuration entre dans la ligne de commande, donc elle est bornée
+  # ici plutôt que reprise telle quelle.
+  - name: buildConfiguration
+    type: string
+    default: Release
+    values:
+      - Debug
+      - Release
+  - name: projects
+    type: object
+    default: []
 
 steps:
   - task: DotNetCoreCLI@2
