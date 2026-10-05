@@ -10,7 +10,7 @@ param appNames array
   'Test'
   'Prod'
 ])
-param NiveauPlan string
+param niveauPlan string
 
 @description('Région de déploiement')
 param location string
@@ -19,7 +19,7 @@ param location string
 param applicationTag string
 
 @description('SKU du plan')
-var skuName = NiveauPlan == 'Prod' ? 'S1' : (NiveauPlan == 'Test' ? 'B1' : 'F1')
+var skuName = niveauPlan == 'Prod' ? 'S1' : (niveauPlan == 'Test' ? 'B1' : 'F1')
 
 @description('Suffixe aléatoire')
 var randomSuffix = substring(uniqueString(resourceGroup().id), 0, 4)
@@ -65,7 +65,7 @@ resource webApps 'Microsoft.Web/sites@2025-03-01' = [
 
 @description('Slots "staging" Prod')
 resource stagingSlots 'Microsoft.Web/sites/slots@2025-03-01' = [
-  for (appName, i) in appNames: if (NiveauPlan == 'Prod') {
+  for (appName, i) in appNames: if (niveauPlan == 'Prod') {
     parent: webApps[i]
     name: 'staging'
     location: location
@@ -88,7 +88,7 @@ resource stagingSlots 'Microsoft.Web/sites/slots@2025-03-01' = [
 ]
 
 @description('Autoscale en production')
-resource autoScale 'Microsoft.Insights/autoscalesettings@2022-10-01' = if (NiveauPlan == 'Prod') {
+resource autoScale 'Microsoft.Insights/autoscalesettings@2022-10-01' = if (niveauPlan == 'Prod') {
   name: 'autoscale-${appServicePlanName}'
   location: location
   tags: {

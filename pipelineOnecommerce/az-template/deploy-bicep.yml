@@ -37,7 +37,7 @@ jobs:
                     --resource-group ${{ parameters.resourceGroup }} \
                     --template-file ${{ parameters.templateFile }} \
                     --parameters \
-                      NiveauPlan='${{ parameters.environment }}' \
+                      niveauPlan='${{ parameters.environment }}' \
                       location='${{ parameters.location }}' \
                       applicationTag='OneCommerce' \
                       sqlAdminLogin='sqladmin' \

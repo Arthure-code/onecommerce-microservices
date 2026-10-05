@@ -1,11 +1,7 @@
 @description('Nom du Service Bus')
 param serviceBusName string
 
-@description('Région autorisée')
-@allowed([
-  'CanadaCentral'
-  'CanadaEast'
-])
+@description('Région de déploiement')
 param location string
 
 @description('Niveau tarifaire du Service Bus')
@@ -32,6 +28,9 @@ resource serviceBus 'Microsoft.ServiceBus/namespaces@2026-01-01' = if (createNam
   sku: {
     name: skuName
     tier: skuName
+  }
+  identity: {
+    type: 'SystemAssigned'
   }
   tags: {
     Application: applicationTag

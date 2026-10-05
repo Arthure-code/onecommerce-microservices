@@ -93,6 +93,9 @@ resource sqlDatabases 'Microsoft.Sql/servers/databases@2025-01-01' = [
       name: 'ElasticPool'
       tier: 'Basic'
     }
+    identity: {
+      type: 'SystemAssigned'
+    }
     tags: tags
     properties: {
       elasticPoolId: sqlElasticPool.id

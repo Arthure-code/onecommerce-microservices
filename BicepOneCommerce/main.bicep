@@ -4,7 +4,7 @@
   'Test'
   'Prod'
 ])
-param NiveauPlan string = 'Dev'
+param niveauPlan string = 'Dev'
 
 @description('Région de déploiement')
 param location string = resourceGroup().location
@@ -50,7 +50,7 @@ module appService 'modules/appService.bicep' = [
     name: 'deploy-${config.planNameSuffix}'
     params: {
       location: location
-      NiveauPlan: NiveauPlan
+      niveauPlan: niveauPlan
       planNameSuffix: config.planNameSuffix
       appNames: config.appNames
       applicationTag: applicationTag

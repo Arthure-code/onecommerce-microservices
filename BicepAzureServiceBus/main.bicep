@@ -1,8 +1,4 @@
 @description('Région de déploiement')
-@allowed([
-  'CanadaCentral'
-  'CanadaEast'
-])
 param location string
 
 @description('Environnement de déploiement')
@@ -11,9 +7,6 @@ param location string
   'Prod'
 ])
 param environment string
-
-@description('Préfixe du nom du Service Bus')
-var serviceBusName = 'sb-onecommerce-${toLower(environment)}'
 
 @description('Niveau tarifaire')
 @allowed([
@@ -28,6 +21,9 @@ param createNamespace bool = true
 
 @description('Tag Application')
 param applicationTag string = 'OneCommerce'
+
+@description('Préfixe du nom du Service Bus')
+var serviceBusName = 'sb-onecommerce-${toLower(environment)}'
 
 @description('Liste des files d’attente à créer')
 var queues = [
