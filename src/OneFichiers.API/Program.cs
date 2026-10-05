@@ -1,4 +1,5 @@
-﻿using Azure.Storage.Blobs;
+﻿using Azure.Identity;
+using Azure.Storage.Blobs;
 using OneFichiers.API.Interfaces;
 using OneFichiers.API.Services;
 
@@ -22,23 +23,24 @@ builder.Services.AddCors(options =>
         .WithHeaders("Content-Type", "x-ms-blob-type"));
 });
 
-string? connexionStockage = builder.Configuration.GetConnectionString("Stockage");
+string? compteStockage = builder.Configuration["CompteStockage"];
 string conteneurImages = builder.Configuration["ConteneurImages"] ?? "images";
 
-if (string.IsNullOrWhiteSpace(connexionStockage))
+if (string.IsNullOrWhiteSpace(compteStockage))
 {
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddSingleton<IMagasinImages, MagasinDisque>();
 }
 else
 {
-    builder.Services.AddSingleton(_ =>
-    {
-        var conteneur = new BlobContainerClient(connexionStockage, conteneurImages);
-        conteneur.CreateIfNotExists();
+    // Aucune clé de compte : l'application signe ses liens avec sa propre
+    // identité, à qui le rôle sur le conteneur a été donné au déploiement.
+    builder.Services.AddSingleton(_ => new BlobServiceClient(
+        new Uri($"https://{compteStockage}.blob.core.windows.net"),
+        new DefaultAzureCredential()));
 
-        return conteneur;
-    });
+    builder.Services.AddSingleton(fournisseur =>
+        fournisseur.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(conteneurImages));
 
     builder.Services.AddSingleton<IMagasinImages, MagasinBlob>();
 }

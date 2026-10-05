@@ -4,6 +4,12 @@ param location string
 @description('Tag Application stockage')
 param applicationTag string
 
+@description('Origines admises à écrire et lire les images depuis un navigateur')
+param originesAutorisees array = []
+
+@description('Nom du conteneur des images')
+param conteneurImages string = 'images'
+
 @description('Nom du compte storage')
 var storageAccountName = 'stone${uniqueString(resourceGroup().id)}'
 
@@ -55,12 +61,34 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2025-06-01' = {
   parent: storageAccount
   name: 'default'
+  properties: {
+    cors: {
+      corsRules: [
+        {
+          allowedOrigins: originesAutorisees
+          allowedMethods: [
+            'GET'
+            'HEAD'
+            'PUT'
+          ]
+          allowedHeaders: [
+            'content-type'
+            'x-ms-blob-type'
+          ]
+          exposedHeaders: [
+            'etag'
+          ]
+          maxAgeInSeconds: 3600
+        }
+      ]
+    }
+  }
 }
 
 @description('Conteneur Blob images')
 resource imagesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2025-06-01' = {
   parent: blobService
-  name: 'images'
+  name: conteneurImages
   properties: {
     publicAccess: 'None'
   }

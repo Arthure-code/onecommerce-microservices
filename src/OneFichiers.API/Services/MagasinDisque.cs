@@ -16,14 +16,16 @@ namespace OneFichiers.API.Services
 
         public bool RecoitLesOctets => true;
 
-        public LienTeleversement LienTeleversement(string nomFichier)
+        public Task<LienTeleversement> LienTeleversementAsync(string nomFichier)
         {
-            return new LienTeleversement($"{Racine()}/api/fichiers/{nomFichier}", nomFichier, DateTimeOffset.UtcNow.AddMinutes(15));
+            return Task.FromResult(
+                new LienTeleversement($"{Racine()}/api/fichiers/{nomFichier}", nomFichier, DateTimeOffset.UtcNow.AddMinutes(15)));
         }
 
-        public LienLecture LienLecture()
+        public Task<LienLecture> LienLectureAsync()
         {
-            return new LienLecture($"{Racine()}/images", string.Empty, DateTimeOffset.UtcNow.AddMinutes(30));
+            return Task.FromResult(
+                new LienLecture($"{Racine()}/images", string.Empty, DateTimeOffset.UtcNow.AddMinutes(30)));
         }
 
         public async Task EnregistrerAsync(string nomFichier, Stream contenu)

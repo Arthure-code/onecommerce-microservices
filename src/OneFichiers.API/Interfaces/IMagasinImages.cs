@@ -8,9 +8,9 @@ namespace OneFichiers.API.Interfaces
         // signer une URL vers un stockage externe.
         bool RecoitLesOctets { get; }
 
-        LienTeleversement LienTeleversement(string nomFichier);
+        Task<LienTeleversement> LienTeleversementAsync(string nomFichier);
 
-        LienLecture LienLecture();
+        Task<LienLecture> LienLectureAsync();
 
         Task EnregistrerAsync(string nomFichier, Stream contenu);
     }

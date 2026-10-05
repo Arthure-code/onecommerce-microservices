@@ -43,16 +43,16 @@ namespace OneFichiers.API.Tests.Controllers
         }
 
         [Fact]
-        public void DemanderLienTeleversement_RefuseUnCorpsAbsent()
+        public async Task DemanderLienTeleversement_RefuseUnCorpsAbsent()
         {
             // Given aucune demande
 
             // When
-            ActionResult<LienTeleversement> resultat = _controller.DemanderLienTeleversement(null);
+            ActionResult<LienTeleversement> resultat = await _controller.DemanderLienTeleversement(null);
 
             // Then rien n'est demandé au magasin
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
-            _magasin.Verify(m => m.LienTeleversement(It.IsAny<string>()), Times.Never);
+            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Theory]
@@ -61,17 +61,17 @@ namespace OneFichiers.API.Tests.Controllers
         [InlineData("/etc/passwd")]
         [InlineData(@"C:\Windows\System32\drivers\etc\hosts")]
         [InlineData("sous-dossier/image.png")]
-        public void DemanderLienTeleversement_RefuseUnNomQuiDesigneUnAutreEndroitQueLeDossierDesImages(string nomFichier)
+        public async Task DemanderLienTeleversement_RefuseUnNomQuiDesigneUnAutreEndroitQueLeDossierDesImages(string nomFichier)
         {
             // Given un nom de fichier qui sort du dossier des images
             var demande = new DemandeLien { NomFichier = nomFichier };
 
             // When
-            ActionResult<LienTeleversement> resultat = _controller.DemanderLienTeleversement(demande);
+            ActionResult<LienTeleversement> resultat = await _controller.DemanderLienTeleversement(demande);
 
             // Then aucun lien n'est signé, et l'appelant lit pourquoi
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
-            _magasin.Verify(m => m.LienTeleversement(It.IsAny<string>()), Times.Never);
+            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Theory]
@@ -79,51 +79,51 @@ namespace OneFichiers.API.Tests.Controllers
         [InlineData("script.exe")]
         [InlineData("page.html")]
         [InlineData("sans-extension")]
-        public void DemanderLienTeleversement_RefuseCeQuiNEstPasUneImage(string nomFichier)
+        public async Task DemanderLienTeleversement_RefuseCeQuiNEstPasUneImage(string nomFichier)
         {
             // Given un nom de fichier qui n'annonce pas une image
             var demande = new DemandeLien { NomFichier = nomFichier };
 
             // When
-            ActionResult<LienTeleversement> resultat = _controller.DemanderLienTeleversement(demande);
+            ActionResult<LienTeleversement> resultat = await _controller.DemanderLienTeleversement(demande);
 
             // Then
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
-            _magasin.Verify(m => m.LienTeleversement(It.IsAny<string>()), Times.Never);
+            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
-        public void DemanderLienTeleversement_RendLeLienQueLeMagasinASigne()
+        public async Task DemanderLienTeleversement_RendLeLienQueLeMagasinASigne()
         {
             // Given un magasin qui signe le lien demandé
             _magasin
-                .Setup(m => m.LienTeleversement(It.IsAny<string>()))
-                .Returns(_lienTeleversement);
+                .Setup(m => m.LienTeleversementAsync(It.IsAny<string>()))
+                .ReturnsAsync(_lienTeleversement);
 
             // When
             ActionResult<LienTeleversement> resultat =
-                _controller.DemanderLienTeleversement(new DemandeLien { NomFichier = _nomAccepte });
+                await _controller.DemanderLienTeleversement(new DemandeLien { NomFichier = _nomAccepte });
 
             // Then le lien part tel quel, l'API ne porte aucun octet
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Assert.Same(_lienTeleversement, reponse.Value);
-            _magasin.Verify(m => m.LienTeleversement(It.IsAny<string>()), Times.Once);
+            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Once);
         }
 
         [Fact]
-        public void DemanderLienTeleversement_NeReprendPasLeNomProposeMaisGardeSonExtension()
+        public async Task DemanderLienTeleversement_NeReprendPasLeNomProposeMaisGardeSonExtension()
         {
             // Given un magasin qui signe ce qu'on lui passe
             string? nomSigne = null;
             _magasin
-                .Setup(m => m.LienTeleversement(It.IsAny<string>()))
+                .Setup(m => m.LienTeleversementAsync(It.IsAny<string>()))
                 .Callback<string>(n => nomSigne = n)
-                .Returns(_lienTeleversement);
+                .ReturnsAsync(_lienTeleversement);
 
             // When deux visiteurs proposent le même nom
-            _controller.DemanderLienTeleversement(new DemandeLien { NomFichier = _nomAccepte });
+            await _controller.DemanderLienTeleversement(new DemandeLien { NomFichier = _nomAccepte });
             string? premier = nomSigne;
-            _controller.DemanderLienTeleversement(new DemandeLien { NomFichier = _nomAccepte });
+            await _controller.DemanderLienTeleversement(new DemandeLien { NomFichier = _nomAccepte });
 
             // Then aucun des deux n'écrase l'image de l'autre
             Assert.NotNull(premier);
@@ -133,18 +133,18 @@ namespace OneFichiers.API.Tests.Controllers
         }
 
         [Fact]
-        public void DemanderLienLecture_RendLaBaseEtLaSignature()
+        public async Task DemanderLienLecture_RendLaBaseEtLaSignature()
         {
             // Given un magasin qui signe une lecture
-            _magasin.Setup(m => m.LienLecture()).Returns(_lienLecture);
+            _magasin.Setup(m => m.LienLectureAsync()).ReturnsAsync(_lienLecture);
 
             // When
-            ActionResult<LienLecture> resultat = _controller.DemanderLienLecture();
+            ActionResult<LienLecture> resultat = await _controller.DemanderLienLecture();
 
             // Then une seule signature sert à toutes les images d'une page
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Assert.Same(_lienLecture, reponse.Value);
-            _magasin.Verify(m => m.LienLecture(), Times.Once);
+            _magasin.Verify(m => m.LienLectureAsync(), Times.Once);
         }
 
         [Fact]

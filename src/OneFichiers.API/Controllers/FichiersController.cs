@@ -18,7 +18,7 @@ public class FichiersController : ControllerBase
     }
 
     [HttpPost("televersement")]
-    public ActionResult<LienTeleversement> DemanderLienTeleversement([FromBody] DemandeLien? demande)
+    public async Task<ActionResult<LienTeleversement>> DemanderLienTeleversement([FromBody] DemandeLien? demande)
     {
         string? nomPropose = NomDeFichierAccepte(demande?.NomFichier);
         if (nomPropose == null)
@@ -30,19 +30,20 @@ public class FichiersController : ControllerBase
         // qui envoient photo.png n'écrasent pas l'image l'un de l'autre.
         string nomDepose = $"{Guid.NewGuid():N}{Path.GetExtension(nomPropose)}";
 
-        return Ok(_magasin.LienTeleversement(nomDepose));
+        return Ok(await _magasin.LienTeleversementAsync(nomDepose));
     }
 
     [HttpGet("lecture")]
-    public ActionResult<LienLecture> DemanderLienLecture()
+    public async Task<ActionResult<LienLecture>> DemanderLienLecture()
     {
-        return Ok(_magasin.LienLecture());
+        return Ok(await _magasin.LienLectureAsync());
     }
 
     // Le repli sur disque reçoit les octets ici. Avec un compte de stockage,
     // ils vont directement au conteneur et cette route n'existe pas.
     [HttpPut("{nomFichier}")]
-    public async Task<IActionResult> Deposer(string nomFichier)
+    [Consumes("image/png", "image/jpeg", "application/octet-stream")]
+    public async Task<IActionResult> Deposer([FromRoute] string nomFichier)
     {
         if (!_magasin.RecoitLesOctets)
         {

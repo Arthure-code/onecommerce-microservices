@@ -24,6 +24,15 @@ param applicationTag string = 'OneCommerce'
 @description('Login admin SQL')
 param sqlAdminLogin string = 'sqladmin'
 
+@description('Nom du conteneur des images')
+param conteneurImages string = 'images'
+
+@description('Suffixe partagé par les noms dans le groupe de ressources')
+var randomSuffix = substring(uniqueString(resourceGroup().id), 0, 4)
+
+@description('Adresse de la boutique, seule origine admise à déposer une image')
+var urlBoutique = 'https://webapp-OneCommerceMVC-${randomSuffix}.azurewebsites.net'
+
 @description('Configs des App Services')
 var appServiceConfigs = [
   {
@@ -32,6 +41,7 @@ var appServiceConfigs = [
       'OneCommerceMVC'
       'OneProduit'
     ]
+    accesBlob: []
   }
   {
     planNameSuffix: 'APIs'
@@ -39,6 +49,9 @@ var appServiceConfigs = [
       'OneFichiers'
       'OneCommandes'
       'OneFidelite'
+    ]
+    accesBlob: [
+      'OneFichiers'
     ]
   }
 ]
@@ -54,6 +67,11 @@ module appService 'modules/appService.bicep' = [
       planNameSuffix: config.planNameSuffix
       appNames: config.appNames
       applicationTag: applicationTag
+      randomSuffix: randomSuffix
+      storageAccountName: storage.outputs.storageAccountNameCreated
+      conteneurImages: conteneurImages
+      urlBoutique: urlBoutique
+      applicationsAvecAccesBlob: config.accesBlob
     }
   }
 ]
@@ -78,6 +96,10 @@ module storage 'modules/storage.bicep' = {
   params: {
     location: location
     applicationTag: applicationTag
+    conteneurImages: conteneurImages
+    originesAutorisees: [
+      urlBoutique
+    ]
   }
 }
 
