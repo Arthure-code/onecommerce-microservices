@@ -43,6 +43,11 @@ var roleContributeurBlob = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 @description('Nom du plan App Service')
 var appServicePlanName = 'sp-${planNameSuffix}-${randomSuffix}'
 
+@description('Compte de stockage auquel les applications accèdent')
+resource compteStockage 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
+  name: storageAccountName
+}
+
 @description('Plan App Service')
 resource appServicePlan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: appServicePlanName
@@ -78,11 +83,6 @@ resource webApps 'Microsoft.Web/sites@2025-03-01' = [
     }
   }
 ]
-
-@description('Compte de stockage auquel les applications accèdent')
-resource compteStockage 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
-  name: storageAccountName
-}
 
 @description('Accès au conteneur, donné aux seules applications qui en ont besoin')
 resource accesBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = [

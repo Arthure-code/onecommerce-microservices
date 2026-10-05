@@ -35,7 +35,7 @@ namespace OneCommandes.API.Services
             var messageFidelites = new QueueFidelitesDto
             {
                 NumeroFideliteClient = commande.NumeroFideliteClient,
-                Quantite = commande.Quantite!.Value,
+                Quantite = commande.Quantite.Value,
                 PrixTotal = commande.PrixTotal!.Value
             };
 
