@@ -9,7 +9,7 @@
 <hr />
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="Edit">
+        <form asp-action="Edit" data-depot-image="@Url.Action("LienImage")">
             <div asp-validation-summary="All" class="text-danger"></div>
             <div class="form-group">
                 <label asp-for="Id" class="control-label"></label>
@@ -37,9 +37,11 @@
                 <span asp-validation-for="Quantite" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Image" class="control-label"></label>
-                <input asp-for="Image" class="form-control" />
+                <label for="fichierImage" class="control-label">Remplacer l'image</label>
+                <input type="file" id="fichierImage" accept=".png,.jpg,.jpeg" data-image />
+                <input asp-for="Image" type="hidden" data-nom-image />
                 <span asp-validation-for="Image" class="text-danger"></span>
+                <span class="text-danger" data-erreur-image></span>
             </div>
             <div class="form-group form-check">
                 <label class="form-check-label">
@@ -57,4 +59,5 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/depot-image.js" asp-append-version="true"></script>
 }

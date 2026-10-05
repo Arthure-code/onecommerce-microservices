@@ -1,10 +1,10 @@
-﻿@using Microsoft.Extensions.Configuration
-@inject IConfiguration Configuration
+﻿@using OneCommerce.MVC.Interfaces
+@inject IFichiersService FichiersService
 @model OneCommerce.MVC.Models.Commande
 
 @{
     ViewData["Title"] = "Create";
-    var fichierEndpoint = Configuration["FichiersImageEndpoint"];
+    var lienImages = await FichiersService.LienLecture();
 }
 
 <h3>Veuillez remplir les informations pour votre commande</h3>
@@ -15,7 +15,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-5">
-                    <img class="card-img-top" src="@fichierEndpoint/images/@Model.Produit?.Image" alt="@Model.Produit?.Nom">
+                    <img class="card-img-top" src="@lienImages?.Pour(Model.Produit?.Image)" alt="@Model.Produit?.Nom">
                 </div>
                 <div class="col-md-7">
                     <h1 class="jumbotron-heading">@Model.Produit?.Nom</h1>

@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OneCommerce.MVC.Controllers;
 using OneCommerce.MVC.Interfaces;
@@ -14,7 +13,7 @@ namespace OneCommerce.MVC.Tests.Controllers
         private readonly ProduitsController _controller;
         private readonly Produit _produit;
         private readonly Produit _produitModifie;
-        private readonly Mock<IFormFile> _image;
+        private readonly LienTeleversement _lienTeleversement;
         private readonly int _identifiantAuCatalogue;
         private readonly int _identifiantAbsentDuCatalogue;
 
@@ -44,8 +43,10 @@ namespace OneCommerce.MVC.Tests.Controllers
                 Image = "image3.png"
             };
 
-            _image = new Mock<IFormFile>();
-            _image.Setup(f => f.FileName).Returns("nouvelle-image.png");
+            _lienTeleversement = new LienTeleversement(
+                "https://stone.blob.core.windows.net/images/a1b2c3.png?sig=signature",
+                "a1b2c3.png",
+                DateTimeOffset.UtcNow.AddMinutes(15));
 
             _identifiantAuCatalogue = 3;
             _identifiantAbsentDuCatalogue = 99;
@@ -78,28 +79,43 @@ namespace OneCommerce.MVC.Tests.Controllers
             // When aucune nouvelle image n'est déposée
             IActionResult resultat = await _controller.Edit(_produitModifie);
 
-            // Then le produit part tel quel, et l'image n'est pas touchée
+            // Then le produit part tel quel, et aucune image ne transite par ici
             RedirectToActionResult redirection = Assert.IsType<RedirectToActionResult>(resultat);
             Assert.Equal(nameof(ProduitsController.Index), redirection.ActionName);
             _produitService.Verify(s => s.UpdateProduit(_produitModifie), Times.Once);
-            _fichiersService.Verify(s => s.Upload(It.IsAny<IFormFile>(), It.IsAny<string>()), Times.Never);
+            _fichiersService.VerifyNoOtherCalls();
         }
 
         [Fact]
-        public async Task Edit_DeposeLaNouvelleImageAvantDeModifier()
+        public async Task LienImage_RendLeLienQueLeNavigateurUtilisera()
         {
-            // Given une nouvelle image jointe au formulaire
-            _produitModifie.FichierImage = _image.Object;
-            _produitService
-                .Setup(s => s.UpdateProduit(It.IsAny<Produit>()))
-                .ReturnsAsync(_produitModifie);
+            // Given un service de fichiers qui accorde un lien
+            _fichiersService
+                .Setup(s => s.LienTeleversement(It.IsAny<string>()))
+                .ReturnsAsync(_lienTeleversement);
 
             // When
-            await _controller.Edit(_produitModifie);
+            IActionResult resultat = await _controller.LienImage("photo.png");
 
-            // Then l'image part sous le nom que le produit portera
-            _fichiersService.Verify(s => s.Upload(_image.Object, "Image3.png"), Times.Once);
-            _produitService.Verify(s => s.UpdateProduit(It.Is<Produit>(p => p.Image == "Image3.png")), Times.Once);
+            // Then le navigateur reçoit où écrire et sous quel nom
+            JsonResult json = Assert.IsType<JsonResult>(resultat);
+            Assert.Same(_lienTeleversement, json.Value);
+            _fichiersService.Verify(s => s.LienTeleversement("photo.png"), Times.Once);
+        }
+
+        [Fact]
+        public async Task LienImage_RefuseQuandLeServiceNAccordeAucunLien()
+        {
+            // Given un service de fichiers qui refuse le nom proposé
+            _fichiersService
+                .Setup(s => s.LienTeleversement(It.IsAny<string>()))
+                .ReturnsAsync((LienTeleversement?)null);
+
+            // When
+            IActionResult resultat = await _controller.LienImage("archive.zip");
+
+            // Then
+            Assert.IsType<BadRequestResult>(resultat);
         }
 
         [Fact]

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using OneFichiers.API.Interfaces;
 using OneFichiers.API.Models;
 
 namespace OneFichiers.API.Controllers;
@@ -9,45 +10,63 @@ public class FichiersController : ControllerBase
 {
     private static readonly string[] ExtensionsAcceptees = [".png", ".jpg", ".jpeg"];
 
-    [HttpPost]
-    public async Task<IActionResult> Upload([FromBody] Fichier fichier)
-    {
-        if (fichier == null || string.IsNullOrWhiteSpace(fichier.FichierBase64))
-        {
-            return BadRequest("Le fichier est vide ou invalide.");
-        }
+    private readonly IMagasinImages _magasin;
 
-        string? nomFichier = NomDeFichierAccepte(fichier.NomFichier);
-        if (nomFichier == null)
+    public FichiersController(IMagasinImages magasin)
+    {
+        _magasin = magasin;
+    }
+
+    [HttpPost("televersement")]
+    public ActionResult<LienTeleversement> DemanderLienTeleversement([FromBody] DemandeLien? demande)
+    {
+        string? nomPropose = NomDeFichierAccepte(demande?.NomFichier);
+        if (nomPropose == null)
         {
             return BadRequest("Le nom de fichier est invalide. Il doit être un nom simple se terminant par .png, .jpg ou .jpeg.");
         }
 
-        try
-        {
-            byte[] imageBytes = Convert.FromBase64String(fichier.FichierBase64);
+        // Le nom déposé est tiré ici, pas repris de l'appelant : deux visiteurs
+        // qui envoient photo.png n'écrasent pas l'image l'un de l'autre.
+        string nomDepose = $"{Guid.NewGuid():N}{Path.GetExtension(nomPropose)}";
 
-            string imagesPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
-
-            if (!Directory.Exists(imagesPath))
-            {
-                Directory.CreateDirectory(imagesPath);
-            }
-
-            await System.IO.File.WriteAllBytesAsync(Path.Combine(imagesPath, nomFichier), imageBytes);
-
-            var fileUrl = $"{Request.Scheme}://{Request.Host}/images/{nomFichier}";
-
-            return Ok(new { message = "Fichier enregistré avec succès", url = fileUrl });
-        }
-        catch (FormatException)
-        {
-            return BadRequest("Le contenu base64 est invalide.");
-        }
+        return Ok(_magasin.LienTeleversement(nomDepose));
     }
 
-    // Le nom arrive du corps de la requête. Sans ce filtre, un appelant qui
-    // envoie ../../appsettings.json écrit où il veut sur le disque.
+    [HttpGet("lecture")]
+    public ActionResult<LienLecture> DemanderLienLecture()
+    {
+        return Ok(_magasin.LienLecture());
+    }
+
+    // Le repli sur disque reçoit les octets ici. Avec un compte de stockage,
+    // ils vont directement au conteneur et cette route n'existe pas.
+    [HttpPut("{nomFichier}")]
+    public async Task<IActionResult> Deposer(string nomFichier)
+    {
+        if (!_magasin.RecoitLesOctets)
+        {
+            return NotFound();
+        }
+
+        string? nomAccepte = NomDeFichierAccepte(nomFichier);
+        if (nomAccepte == null)
+        {
+            return BadRequest("Le nom de fichier est invalide. Il doit être un nom simple se terminant par .png, .jpg ou .jpeg.");
+        }
+
+        if (Request.ContentLength is null or 0)
+        {
+            return BadRequest("Le fichier est vide.");
+        }
+
+        await _magasin.EnregistrerAsync(nomAccepte, Request.Body);
+
+        return NoContent();
+    }
+
+    // Le nom arrive de l'appelant. Sans ce filtre, un nom comme
+    // ../../appsettings.json désigne un autre endroit que le dossier des images.
     private static string? NomDeFichierAccepte(string? nom)
     {
         if (string.IsNullOrWhiteSpace(nom))

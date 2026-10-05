@@ -1,11 +1,11 @@
 ﻿@model OneCommerce.MVC.Models.Produit
-@using Microsoft.Extensions.Configuration
-@inject IConfiguration Configuration
+@using OneCommerce.MVC.Interfaces
+@inject IFichiersService FichiersService
 
 @{
     ViewData["Title"] = "Delete";
 
-    var fichierEndpoint = Configuration["FichiersImageEndpoint"];
+    var lienImages = await FichiersService.LienLecture();
 }
 
 <h3>Voulez-vous vraimment supprimer le produit ci-dessous ?</h3>
@@ -16,7 +16,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-5">
-                    <img class="card-img-top" src="@fichierEndpoint/images/@Model.Image" alt="@Model.Nom">
+                    <img class="card-img-top" src="@lienImages?.Pour(Model.Image)" alt="@Model.Nom">
                 </div>
                 <div class="col-md-7">
                     <h1 class="jumbotron-heading">@Model.Nom</h1>

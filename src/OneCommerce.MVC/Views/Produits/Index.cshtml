@@ -1,5 +1,5 @@
-﻿@using Microsoft.Extensions.Configuration
-@inject IConfiguration Configuration
+﻿@using OneCommerce.MVC.Interfaces
+@inject IFichiersService FichiersService
 @model IEnumerable<Produit>
 
 @{
@@ -7,7 +7,7 @@
 
     Produit produitVedette = Model.Single(p => p.Vedette);
 
-    var fichierEndpoint = Configuration["FichiersImageEndpoint"];
+    var lienImages = await FichiersService.LienLecture();
 
 
 }
@@ -17,7 +17,7 @@
         <h1 class="jumbotron-heading">Produit vedette : @produitVedette.Nom</h1>
         <div class="row">
             <div class="col-md-5">
-                <img class="card-img-top" src="@fichierEndpoint/images/@produitVedette.Image" alt="@produitVedette.Nom">
+                <img class="card-img-top" src="@lienImages?.Pour(produitVedette.Image)" alt="@produitVedette.Nom">
             </div>
             <div class="col-md-7">
                 <p class="lead text-muted">@produitVedette.Description</p>
@@ -57,7 +57,7 @@
                     <div class="col-md-4">
                         <div class="card mb-4 box-shadow">
                         <h1 class="jumbotron-heading"> @item.Nom</h1>
-                        <img class="card-img-top" src="@fichierEndpoint/images/@item.Image" alt="@item.Nom">
+                        <img class="card-img-top" src="@lienImages?.Pour(item.Image)" alt="@item.Nom">
                             <div class="card-body">
                             <p class="card-text">@item.Description</p>
                                 <div class="d-flex justify-content-between align-items-center">

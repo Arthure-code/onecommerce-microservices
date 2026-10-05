@@ -31,8 +31,5 @@ namespace OneCommerce.MVC.Models
         [DisplayName("Est produit vedette")]
         public bool Vedette { get; set; } = false;
 
-        [JsonIgnore]
-        public IFormFile? FichierImage { get; set; }
-
     }
 }

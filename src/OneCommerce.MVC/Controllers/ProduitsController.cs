@@ -39,30 +39,40 @@ namespace OneCommerce.MVC.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Produit produit)
         {
-            if(ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                if (produit.FichierImage == null)
-                {
-                    ModelState.AddModelError(nameof(Produit.FichierImage), "L'image est obligatoire.");
-                    return View(produit);
-                }
-
-                List<Produit> produits = await _produitService.GetProduits();
-
-                produit.Id = produits.Count > 0 ? produits.Max(p => p.Id) + 1 : 1;
-
-                string extension = Path.GetExtension(produit.FichierImage.FileName);
-
-                produit.Image = $"Image{produit.Id}{extension}";
-
-                await _produitService.AddProduit(produit);
-
-                await _fichiersService.Upload(produit.FichierImage, produit.Image);
-
-                return RedirectToAction(nameof(Index));
+                return View(produit);
             }
 
-            return View(produit);
+            if (string.IsNullOrWhiteSpace(produit.Image))
+            {
+                ModelState.AddModelError(nameof(Produit.Image), "L'image est obligatoire.");
+
+                return View(produit);
+            }
+
+            List<Produit> produits = await _produitService.GetProduits();
+
+            produit.Id = produits.Count > 0 ? produits.Max(p => p.Id) + 1 : 1;
+
+            await _produitService.AddProduit(produit);
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Le navigateur demande ici où déposer son image. Il y écrit lui-même,
+        // puis renvoie le nom avec le formulaire : l'octet ne passe pas par ici.
+        [HttpPost]
+        public async Task<IActionResult> LienImage(string nomPropose)
+        {
+            LienTeleversement? lien = await _fichiersService.LienTeleversement(nomPropose);
+
+            if (lien == null)
+            {
+                return BadRequest();
+            }
+
+            return Json(lien);
         }
 
         [HttpGet]
@@ -74,16 +84,6 @@ namespace OneCommerce.MVC.Controllers
             if (!ModelState.IsValid)
             {
                 return View(produit);
-            }
-
-            // Une nouvelle image remplace l'ancienne ; sans dépôt, le produit
-            // garde celle qu'il avait.
-            if (produit.FichierImage != null)
-            {
-                string extension = Path.GetExtension(produit.FichierImage.FileName);
-                produit.Image = $"Image{produit.Id}{extension}";
-
-                await _fichiersService.Upload(produit.FichierImage, produit.Image);
             }
 
             Produit? modifie = await _produitService.UpdateProduit(produit);

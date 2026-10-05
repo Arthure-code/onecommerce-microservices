@@ -1,7 +1,11 @@
-﻿namespace OneCommerce.MVC.Interfaces
+using OneCommerce.MVC.Models;
+
+namespace OneCommerce.MVC.Interfaces
 {
     public interface IFichiersService
     {
-        Task<string?> Upload(IFormFile file, string nomFichier);
+        Task<LienTeleversement?> LienTeleversement(string nomPropose);
+
+        Task<LienLecture?> LienLecture();
     }
 }
