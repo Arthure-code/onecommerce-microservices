@@ -181,5 +181,117 @@ namespace OneCommerce.MVC.Tests.Controllers
             // Then
             Assert.IsType<NotFoundResult>(resultat);
         }
+
+        [Fact]
+        public async Task Index_RendLeCatalogueEntierSansFiltre()
+        {
+            // Given un catalogue
+            List<Produit> catalogue = _fixture.CreateMany<Produit>().ToList();
+            _produitService.Setup(s => s.GetProduits()).ReturnsAsync(catalogue);
+
+            // When aucun filtre n'est demandé
+            IActionResult resultat = await _controller.Index(null);
+
+            // Then
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            Assert.Same(catalogue, vue.Model);
+        }
+
+        [Fact]
+        public async Task Index_NeGardeQueCeQuiPorteLeFiltreOuEstEnVedette()
+        {
+            // Given un produit qui porte le filtre, un en vedette, et un tiers
+            Produit recherche = _fixture.Build<Produit>()
+                .With(p => p.Nom, "Chandail raye")
+                .With(p => p.Vedette, false)
+                .Create();
+            Produit vedette = _fixture.Build<Produit>()
+                .With(p => p.Nom, "Polo uni")
+                .With(p => p.Vedette, true)
+                .Create();
+            Produit ignore = _fixture.Build<Produit>()
+                .With(p => p.Nom, "Casquette")
+                .With(p => p.Vedette, false)
+                .Create();
+
+            _produitService
+                .Setup(s => s.GetProduits())
+                .ReturnsAsync(new List<Produit> { recherche, vedette, ignore });
+
+            // When le visiteur filtre sur une partie du nom, dans une autre casse
+            IActionResult resultat = await _controller.Index("CHANDAIL");
+
+            // Then
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            List<Produit> retenus = Assert.IsType<List<Produit>>(vue.Model);
+            Assert.Contains(recherche, retenus);
+            Assert.Contains(vedette, retenus);
+            Assert.DoesNotContain(ignore, retenus);
+        }
+
+        [Fact]
+        public void Create_OuvreUnFormulaireVide()
+        {
+            // Given la page d'ajout
+
+            // When
+            IActionResult resultat = _controller.Create();
+
+            // Then rien n'est demandé au catalogue
+            Assert.IsType<ViewResult>(resultat);
+            _produitService.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task Create_RendLeFormulaireQuandLeModeleEstInvalide()
+        {
+            // Given un modèle que la validation a rejeté
+            Produit nouveau = _fixture.Create<Produit>();
+            _controller.ModelState.AddModelError(nameof(Produit.Nom), "Le nom est obligatoire");
+
+            // When
+            IActionResult resultat = await _controller.Create(nouveau);
+
+            // Then rien n'est ajouté
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            Assert.Same(nouveau, vue.Model);
+            _produitService.Verify(s => s.AddProduit(It.IsAny<Produit>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Create_RefuseUnProduitDontLImageNAPasEteDeposee()
+        {
+            // Given un produit sans nom d'image
+            Produit sansImage = _fixture.Build<Produit>()
+                .With(p => p.Image, string.Empty)
+                .Create();
+
+            // When
+            IActionResult resultat = await _controller.Create(sansImage);
+
+            // Then le visiteur lit pourquoi, et rien n'est ajouté
+            Assert.IsType<ViewResult>(resultat);
+            Assert.True(_controller.ModelState.ContainsKey(nameof(Produit.Image)));
+            _produitService.Verify(s => s.AddProduit(It.IsAny<Produit>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Create_DonneLIdentifiantSuivantEtRevientAuCatalogue()
+        {
+            // Given un catalogue dont on connaît le plus grand identifiant
+            List<Produit> catalogue = _fixture.CreateMany<Produit>().ToList();
+            int plusGrand = catalogue.Max(p => p.Id!.Value);
+            _produitService.Setup(s => s.GetProduits()).ReturnsAsync(catalogue);
+
+            Produit nouveau = _fixture.Create<Produit>();
+
+            // When
+            IActionResult resultat = await _controller.Create(nouveau);
+
+            // Then il prend la place suivante
+            RedirectToActionResult redirection = Assert.IsType<RedirectToActionResult>(resultat);
+            Assert.Equal(nameof(ProduitsController.Index), redirection.ActionName);
+            _produitService.Verify(s => s.AddProduit(It.Is<Produit>(p => p.Id == plusGrand + 1)), Times.Once);
+        }
     }
 }
