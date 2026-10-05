@@ -66,15 +66,7 @@ namespace OneCommerce.MVC.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Edit(int id)
-        {
-            Produit? produit = await _produitService.GetProduitById(id);
-
-            if (produit == null)
-                return NotFound();
-
-            return View(produit);
-        }
+        public Task<IActionResult> Edit(int id) => AfficherProduit(id, "Edit");
 
         [HttpPost]
         public async Task<IActionResult> Edit(Produit produit)
@@ -106,33 +98,32 @@ namespace OneCommerce.MVC.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Delete(int id)
+        public Task<IActionResult> Delete(int id) => AfficherProduit(id, "Delete");
+
+        [HttpPost]
+        [ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirme(int id)
+        {
+            bool supprime = await _produitService.DeleteProduit(id);
+
+            if (!supprime)
+            {
+                ModelState.AddModelError(string.Empty, "La suppression du produit a échoué.");
+
+                return await AfficherProduit(id, "Delete");
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        private async Task<IActionResult> AfficherProduit(int id, string vue)
         {
             Produit? produit = await _produitService.GetProduitById(id);
 
             if (produit == null)
                 return NotFound();
 
-            return View(produit);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Delete(Produit produit)
-        {
-            if (produit.Id == null)
-            {
-                return NotFound();
-            }
-
-            bool supprime = await _produitService.DeleteProduit(produit.Id.Value);
-
-            if (!supprime)
-            {
-                ModelState.AddModelError(string.Empty, "La suppression du produit a échoué.");
-                return View(produit);
-            }
-
-            return RedirectToAction(nameof(Index));
+            return View(vue, produit);
         }
 
 

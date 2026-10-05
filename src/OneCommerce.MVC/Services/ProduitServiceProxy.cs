@@ -20,7 +20,9 @@ namespace OneCommerce.MVC.Services
 
         public async Task<Produit?> GetProduitById(int id)
         {
-            return await _httpClient.GetFromJsonAsync<Produit>($"api/produits/{id}");
+            var response = await _httpClient.GetAsync($"api/produits/{id}");
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<Produit>();
         }
 
         public async Task<Produit?> AddProduit(Produit produit)

@@ -21,7 +21,7 @@ namespace OneCommerce.MVC.Services
 
         public async Task<Fidelite?> GetFideliteByNumeroAsync(string numero)
         {
-            var response = await _httpClient.GetAsync("api/fidelite/"+numero);
+            var response = await _httpClient.GetAsync("api/fidelite/" + Uri.EscapeDataString(numero));
             if (!response.IsSuccessStatusCode) return new Fidelite();
             return await response.Content.ReadFromJsonAsync<Fidelite>() ?? new Fidelite();
         }

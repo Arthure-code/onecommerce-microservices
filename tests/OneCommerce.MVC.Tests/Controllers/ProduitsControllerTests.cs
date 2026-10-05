@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OneCommerce.MVC.Controllers;
@@ -15,6 +15,8 @@ namespace OneCommerce.MVC.Tests.Controllers
         private readonly Produit _produit;
         private readonly Produit _produitModifie;
         private readonly Mock<IFormFile> _image;
+        private readonly int _identifiantAuCatalogue;
+        private readonly int _identifiantAbsentDuCatalogue;
 
         public ProduitsControllerTests()
         {
@@ -44,6 +46,9 @@ namespace OneCommerce.MVC.Tests.Controllers
 
             _image = new Mock<IFormFile>();
             _image.Setup(f => f.FileName).Returns("nouvelle-image.png");
+
+            _identifiantAuCatalogue = 3;
+            _identifiantAbsentDuCatalogue = 99;
         }
 
         [Fact]
@@ -122,12 +127,12 @@ namespace OneCommerce.MVC.Tests.Controllers
                 .ReturnsAsync(true);
 
             // When
-            IActionResult resultat = await _controller.Delete(_produit);
+            IActionResult resultat = await _controller.DeleteConfirme(_identifiantAuCatalogue);
 
             // Then
             RedirectToActionResult redirection = Assert.IsType<RedirectToActionResult>(resultat);
             Assert.Equal(nameof(ProduitsController.Index), redirection.ActionName);
-            _produitService.Verify(s => s.DeleteProduit(3), Times.Once);
+            _produitService.Verify(s => s.DeleteProduit(_identifiantAuCatalogue), Times.Once);
         }
 
         [Fact]
@@ -137,27 +142,32 @@ namespace OneCommerce.MVC.Tests.Controllers
             _produitService
                 .Setup(s => s.DeleteProduit(It.IsAny<int>()))
                 .ReturnsAsync(false);
+            _produitService
+                .Setup(s => s.GetProduitById(It.IsAny<int>()))
+                .ReturnsAsync(_produit);
 
             // When
-            IActionResult resultat = await _controller.Delete(_produit);
+            IActionResult resultat = await _controller.DeleteConfirme(_identifiantAuCatalogue);
 
-            // Then le visiteur lit pourquoi
-            Assert.IsType<ViewResult>(resultat);
+            // Then le visiteur relit la page de suppression, et lit pourquoi
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            Assert.Equal("Delete", vue.ViewName);
             Assert.False(_controller.ModelState.IsValid);
         }
 
         [Fact]
-        public async Task Delete_RendNonTrouveSansIdentifiant()
+        public async Task Delete_RendNonTrouveQuandLeProduitNExistePas()
         {
-            // Given un produit sans identifiant
-            var sansIdentifiant = new Produit { Nom = "Inconnu", Description = "Sans identifiant" };
+            // Given un service qui ne connaît pas l'identifiant
+            _produitService
+                .Setup(s => s.GetProduitById(It.IsAny<int>()))
+                .ReturnsAsync((Produit?)null);
 
-            // When
-            IActionResult resultat = await _controller.Delete(sansIdentifiant);
+            // When la page de suppression est ouverte
+            IActionResult resultat = await _controller.Delete(_identifiantAbsentDuCatalogue);
 
-            // Then rien n'est demandé au service
+            // Then
             Assert.IsType<NotFoundResult>(resultat);
-            _produitService.Verify(s => s.DeleteProduit(It.IsAny<int>()), Times.Never);
         }
 
         [Fact]
@@ -169,7 +179,7 @@ namespace OneCommerce.MVC.Tests.Controllers
                 .ReturnsAsync((Produit?)null);
 
             // When la page de modification est ouverte
-            IActionResult resultat = await _controller.Edit(99);
+            IActionResult resultat = await _controller.Edit(_identifiantAbsentDuCatalogue);
 
             // Then
             Assert.IsType<NotFoundResult>(resultat);
