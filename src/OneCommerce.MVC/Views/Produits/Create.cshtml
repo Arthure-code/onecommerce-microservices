@@ -10,35 +10,7 @@
     <div class="col-md-4">
         <form asp-action="Create" method="post" data-depot-image="@Url.Action("LienImage")">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Nom" class="control-label"></label>
-                <input asp-for="Nom" class="form-control" />
-                <span asp-validation-for="Nom" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Prix" class="control-label"></label>
-                <input asp-for="Prix" class="form-control" />
-                <span asp-validation-for="Prix" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Quantite" class="control-label"></label>
-                <input asp-for="Quantite" class="form-control" />
-                <span asp-validation-for="Quantite" class="text-danger"></span>
-            </div>
-            <br /> 
-            <div class="form-group">
-                <label for="fichierImage" class="control-label">Image</label>
-                <input type="file" id="fichierImage" accept=".png,.jpg,.jpeg" data-image />
-                <input asp-for="Image" type="hidden" data-nom-image />
-                <span asp-validation-for="Image" class="text-danger"></span>
-                <span class="text-danger" data-erreur-image></span>
-            </div>
-            <br />
+            <partial name="_ChampsProduit" model="Model" />
             <div class="form-group form-check">
                 <label class="form-check-label">
                     <input class="form-check-input" asp-for="Vedette" /> @Html.DisplayNameFor(model => model.Vedette)

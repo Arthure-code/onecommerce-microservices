@@ -5,11 +5,7 @@ using OneFichiers.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
-
-// Add services to the container.
-
-builder.Services.AddControllers();
+builder.AddApiDefaults();
 
 // Le navigateur dépose l'image lui-même, donc l'origine de la boutique doit
 // être admise ici quand le repli sur disque reçoit les octets.
@@ -44,9 +40,6 @@ else
 
     builder.Services.AddSingleton<IMagasinImages, MagasinBlob>();
 }
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
