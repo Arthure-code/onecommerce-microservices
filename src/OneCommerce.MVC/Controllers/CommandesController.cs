@@ -49,7 +49,7 @@ namespace OneCommerce.MVC.Controllers
         {
             if (!ModelState.IsValid)
             {
-                commande.Produit = await _produitService.GetProduitById(commande.IdProduit);
+                commande.Produit = await _produitService.GetProduitById(commande.IdProduit ?? 0);
                 return View(commande);
             }
 
@@ -57,7 +57,7 @@ namespace OneCommerce.MVC.Controllers
 
             if (string.IsNullOrEmpty(fidelite?.NumeroFidelite))
             {
-                commande.Produit = await _produitService.GetProduitById(commande.IdProduit);
+                commande.Produit = await _produitService.GetProduitById(commande.IdProduit ?? 0);
 
                 ModelState.AddModelError("NumeroFideliteClient", "Ce numéro de fidélité n'existe pas.");
                 return View(commande);

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using AutoFixture;
 using AutoFixture.AutoMoq;
@@ -10,6 +10,11 @@ namespace OneProduit.API.Tests.Controllers
 {
     public class ProduitsControllerTests
     {
+        // Le catalogue du contrôleur est statique, et la fixture de chaque
+        // test repart de un : sans compteur partagé, deux tests ajoutent des
+        // produits qui portent le même identifiant.
+        private static int _dernierIdentifiant = 1000;
+
         private readonly IFixture _fixture;
         private readonly ProduitsController _controller;
 
@@ -21,6 +26,7 @@ namespace OneProduit.API.Tests.Controllers
             // .jpg, donc la fixture rend d'emblée des produits que sa propre
             // validation accepte. Tout le reste est tiré par le générateur.
             _fixture.Customize<Produit>(produit => produit
+                .With(p => p.Id, () => Interlocked.Increment(ref _dernierIdentifiant))
                 .With(p => p.Nom, Lettres)
                 .With(p => p.Image, () => $"{Lettres()}.png"));
 
@@ -30,7 +36,7 @@ namespace OneProduit.API.Tests.Controllers
         private static string Lettres() =>
             new(Guid.NewGuid().ToString("N").Where(char.IsLetter).ToArray());
 
-        private static IList<ValidationResult> Valider(Produit produit)
+        private static List<ValidationResult> Valider(Produit produit)
         {
             var resultats = new List<ValidationResult>();
             Validator.TryValidateObject(produit, new ValidationContext(produit), resultats, true);
@@ -42,10 +48,10 @@ namespace OneProduit.API.Tests.Controllers
         {
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(_controller.GetProduits().Result);
 
-            return Assert.IsAssignableFrom<IEnumerable<Produit>>(reponse.Value);
+            return Assert.IsType<IEnumerable<Produit>>(reponse.Value, exactMatch: false);
         }
 
-        private int IdentifiantAbsentDuCatalogue() => Catalogue().Max(p => p.Id) + 1;
+        private int IdentifiantAbsentDuCatalogue() => Catalogue().Max(p => p.Id!.Value) + 1;
 
         [Fact]
         public void GetProduits_RendLeCatalogue()
@@ -57,7 +63,7 @@ namespace OneProduit.API.Tests.Controllers
 
             // Then
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
-            IEnumerable<Produit> produits = Assert.IsAssignableFrom<IEnumerable<Produit>>(reponse.Value);
+            IEnumerable<Produit> produits = Assert.IsType<IEnumerable<Produit>>(reponse.Value, exactMatch: false);
             Assert.NotEmpty(produits);
         }
 
@@ -69,7 +75,7 @@ namespace OneProduit.API.Tests.Controllers
             _controller.AddProduit(ajoute);
 
             // When
-            ActionResult<Produit> resultat = _controller.GetProduit(ajoute.Id);
+            ActionResult<Produit> resultat = _controller.GetProduit(ajoute.Id!.Value);
 
             // Then
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
@@ -131,7 +137,7 @@ namespace OneProduit.API.Tests.Controllers
                 .Create();
 
             // When
-            ActionResult<Produit> resultat = _controller.UpdateProduit(ajoute.Id, modification);
+            ActionResult<Produit> resultat = _controller.UpdateProduit(ajoute.Id!.Value, modification);
 
             // Then les champs changent et l'image reste celle d'avant
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
@@ -164,7 +170,7 @@ namespace OneProduit.API.Tests.Controllers
 
             // When
             ActionResult<Produit> resultat =
-                _controller.UpdateProduit(_fixture.Create<Produit>().Id, _fixture.Create<Produit>());
+                _controller.UpdateProduit(_fixture.Create<Produit>().Id!.Value, _fixture.Create<Produit>());
 
             // Then
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
@@ -178,11 +184,11 @@ namespace OneProduit.API.Tests.Controllers
             _controller.AddProduit(ajoute);
 
             // When
-            IActionResult resultat = _controller.DeleteProduit(ajoute.Id);
+            IActionResult resultat = _controller.DeleteProduit(ajoute.Id!.Value);
 
             // Then il ne s'y trouve plus
             Assert.IsType<NoContentResult>(resultat);
-            Assert.IsType<NotFoundObjectResult>(_controller.GetProduit(ajoute.Id).Result);
+            Assert.IsType<NotFoundObjectResult>(_controller.GetProduit(ajoute.Id!.Value).Result);
         }
 
         [Fact]
@@ -215,7 +221,7 @@ namespace OneProduit.API.Tests.Controllers
             try
             {
                 // When le modèle est validé
-                IList<ValidationResult> erreurs = Valider(produit);
+                List<ValidationResult> erreurs = Valider(produit);
 
                 // Then aucune erreur ne porte sur le prix
                 Assert.DoesNotContain(erreurs, e => e.MemberNames.Contains(nameof(Produit.Prix)));
@@ -233,7 +239,7 @@ namespace OneProduit.API.Tests.Controllers
             Produit produit = _fixture.Create<Produit>();
 
             // When le modèle est validé
-            IList<ValidationResult> erreurs = Valider(produit);
+            List<ValidationResult> erreurs = Valider(produit);
 
             // Then
             Assert.DoesNotContain(erreurs, e => e.MemberNames.Contains(nameof(Produit.Image)));

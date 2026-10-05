@@ -1,4 +1,4 @@
-using AutoFixture;
+﻿using AutoFixture;
 using AutoFixture.AutoMoq;
 using Microsoft.AspNetCore.Mvc;
 using OneFidelite.API.Controllers;
@@ -22,7 +22,7 @@ namespace OneFidelite.API.Tests.Controllers
         {
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(_controller.GetAllFidelites().Result);
 
-            return Assert.IsAssignableFrom<IEnumerable<Fidelite>>(reponse.Value);
+            return Assert.IsType<IEnumerable<Fidelite>>(reponse.Value, exactMatch: false);
         }
 
         [Fact]
@@ -35,7 +35,7 @@ namespace OneFidelite.API.Tests.Controllers
 
             // Then
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
-            IEnumerable<Fidelite> fidelites = Assert.IsAssignableFrom<IEnumerable<Fidelite>>(reponse.Value);
+            IEnumerable<Fidelite> fidelites = Assert.IsType<IEnumerable<Fidelite>>(reponse.Value, exactMatch: false);
             Assert.NotEmpty(fidelites);
         }
 

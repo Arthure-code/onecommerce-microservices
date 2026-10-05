@@ -1,4 +1,4 @@
-using AutoFixture;
+﻿using AutoFixture;
 using AutoFixture.AutoMoq;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -84,7 +84,7 @@ namespace OneCommerce.MVC.Tests.Controllers
             // Given un modèle que la validation a rejeté
             Commande commande = _fixture.Create<Commande>();
             Produit produit = _fixture.Create<Produit>();
-            _produitService.Setup(s => s.GetProduitById(commande.IdProduit)).ReturnsAsync(produit);
+            _produitService.Setup(s => s.GetProduitById(commande.IdProduit!.Value)).ReturnsAsync(produit);
             _controller.ModelState.AddModelError(nameof(Commande.AdresseLivraison), "L'adresse est obligatoire");
 
             // When
@@ -109,7 +109,7 @@ namespace OneCommerce.MVC.Tests.Controllers
                 .Setup(s => s.GetFideliteByNumeroAsync(It.IsAny<string>()))
                 .ReturnsAsync(carteIntrouvable);
             _produitService
-                .Setup(s => s.GetProduitById(commande.IdProduit))
+                .Setup(s => s.GetProduitById(commande.IdProduit!.Value))
                 .ReturnsAsync(_fixture.Create<Produit>());
 
             // When

@@ -1,4 +1,4 @@
-using Aspire.Hosting;
+﻿using Aspire.Hosting;
 using Projects;
 using System.ComponentModel.Design;
 
@@ -23,4 +23,4 @@ builder.AddProject<OneCommerce_MVC>("mvc")
 
 
 
-builder.Build().Run();
+await builder.Build().RunAsync();

@@ -25,7 +25,7 @@
                 <td>@cmd.Quantite</td>
                 <td>@cmd.PrixTotal $</td>
                 <td>@cmd.NumeroFideliteClient</td>
-                <td>@cmd.DateCommande.ToShortDateString()</td>
+                <td>@cmd.DateCommande?.ToShortDateString()</td>
             </tr>
         }
     </tbody>

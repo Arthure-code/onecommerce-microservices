@@ -26,23 +26,23 @@ namespace OneCommandes.API.Services
 
             // Créer les messages
 
-            var messageProduits = new queueProduitsDTO
+            var messageProduits = new QueueProduitsDto
             {
-                IdProduit = commande.IdProduit,
-                Quantite = commande.Quantite
+                IdProduit = commande.IdProduit!.Value,
+                Quantite = commande.Quantite!.Value
             };
 
-            var messageFidelites = new queueFidelitesDTO
+            var messageFidelites = new QueueFidelitesDto
             {
                 NumeroFideliteClient = commande.NumeroFideliteClient,
-                Quantite = commande.Quantite,
-                PrixTotal = commande.PrixTotal
+                Quantite = commande.Quantite!.Value,
+                PrixTotal = commande.PrixTotal!.Value
             };
 
-            var messageLivraisons = new queueLivraisonsDTO
+            var messageLivraisons = new QueueLivraisonsDto
             {
                 NumeroCommande = commande.NumeroCommande,
-                DateCommande = commande.DateCommande,
+                DateCommande = commande.DateCommande!.Value,
                 AdresseLivraison = commande.AdresseLivraison
             };
 

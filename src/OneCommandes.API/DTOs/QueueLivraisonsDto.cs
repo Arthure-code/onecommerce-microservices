@@ -1,6 +1,6 @@
 ﻿namespace OneCommandes.API.DTOs
 {
-    public class queueLivraisonsDTO
+    public class QueueLivraisonsDto
     {
         public string NumeroCommande { get; set; } = string.Empty;
         public DateTime DateCommande { get; set; }

@@ -4,7 +4,7 @@ namespace OneFidelite.API.Models
 {
     public class Fidelite
     {
-        public int Id { get; set; } // interne
+        public int? Id { get; set; } // interne
         public string NumeroFidelite { get; set; } = string.Empty;
 
         [Required]

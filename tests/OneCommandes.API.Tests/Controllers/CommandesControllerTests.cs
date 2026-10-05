@@ -1,4 +1,4 @@
-using AutoFixture;
+﻿using AutoFixture;
 using AutoFixture.AutoMoq;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -35,7 +35,7 @@ namespace OneCommandes.API.Tests.Controllers
 
             // Then
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
-            IEnumerable<Commande> commandes = Assert.IsAssignableFrom<IEnumerable<Commande>>(reponse.Value);
+            IEnumerable<Commande> commandes = Assert.IsType<IEnumerable<Commande>>(reponse.Value, exactMatch: false);
             Assert.NotEmpty(commandes);
             _serviceBusHelper.Verify(m => m.EnvoyerMessage(It.IsAny<Commande>()), Times.Never);
         }
@@ -71,7 +71,7 @@ namespace OneCommandes.API.Tests.Controllers
             Commande rendue = Assert.IsType<Commande>(cree.Value);
             Assert.StartsWith("ONE-CMD-", rendue.NumeroCommande, StringComparison.Ordinal);
             Assert.Equal(61.00m, rendue.PrixTotal);
-            Assert.Equal(DateTime.UtcNow.Date, rendue.DateCommande.Date);
+            Assert.Equal(DateTime.UtcNow.Date, rendue.DateCommande!.Value.Date);
         }
 
         [Fact]

@@ -36,6 +36,10 @@ param applicationsAvecAccesBlob array = []
 @description('SKU du plan')
 var skuName = niveauPlan == 'Prod' ? 'S1' : (niveauPlan == 'Test' ? 'B1' : 'F1')
 
+// Contributeur aux données Blob : c'est ce rôle qui permet à l'application
+// de demander une clé de délégation, donc de signer ses liens sans clé de compte.
+var roleContributeurBlob = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+
 @description('Nom du plan App Service')
 var appServicePlanName = 'sp-${planNameSuffix}-${randomSuffix}'
 
@@ -79,10 +83,6 @@ resource webApps 'Microsoft.Web/sites@2025-03-01' = [
 resource compteStockage 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
   name: storageAccountName
 }
-
-// Contributeur aux données Blob : c'est ce rôle qui permet à l'application
-// de demander une clé de délégation, donc de signer ses liens sans clé de compte.
-var roleContributeurBlob = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 
 @description('Accès au conteneur, donné aux seules applications qui en ont besoin')
 resource accesBlob 'Microsoft.Authorization/roleAssignments@2022-04-01' = [

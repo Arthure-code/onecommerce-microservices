@@ -33,6 +33,11 @@ var randomSuffix = substring(uniqueString(resourceGroup().id), 0, 4)
 @description('Adresse de la boutique, seule origine admise à déposer une image')
 var urlBoutique = 'https://webapp-OneCommerceMVC-${randomSuffix}.azurewebsites.net'
 
+@description('Applications à qui le rôle sur le conteneur des images est donné')
+var applicationsAvecAccesBlob = [
+  'OneFichiers'
+]
+
 @description('Configs des App Services')
 var appServiceConfigs = [
   {
@@ -41,7 +46,6 @@ var appServiceConfigs = [
       'OneCommerceMVC'
       'OneProduit'
     ]
-    accesBlob: []
   }
   {
     planNameSuffix: 'APIs'
@@ -49,9 +53,6 @@ var appServiceConfigs = [
       'OneFichiers'
       'OneCommandes'
       'OneFidelite'
-    ]
-    accesBlob: [
-      'OneFichiers'
     ]
   }
 ]
@@ -71,7 +72,7 @@ module appService 'modules/appService.bicep' = [
       storageAccountName: storage.outputs.storageAccountNameCreated
       conteneurImages: conteneurImages
       urlBoutique: urlBoutique
-      applicationsAvecAccesBlob: config.accesBlob
+      applicationsAvecAccesBlob: applicationsAvecAccesBlob
     }
   }
 ]

@@ -54,6 +54,10 @@ namespace OneCommandes.API.Controllers
         private static int _idCounter = _commandes.Count;
         private static readonly Random _random = new();
 
+        // Le compteur et la liste sont partagés par toutes les requêtes du
+        // service, donc l'identifiant est pris sans qu'un autre appel le double.
+        private static int ProchainIdentifiant() => Interlocked.Increment(ref _idCounter);
+
         [HttpGet]
         public ActionResult<IEnumerable<Commande>> GetAll()
         {
@@ -72,7 +76,7 @@ namespace OneCommandes.API.Controllers
                 numero = $"ONE-CMD-{_random.Next(100000, 999999)}";
             } while (_commandes.Any(c => c.NumeroCommande == numero));
 
-            commande.Id = ++_idCounter;
+            commande.Id = ProchainIdentifiant();
             commande.NumeroCommande = numero;
             commande.DateCommande = DateTime.UtcNow;
             commande.PrixTotal = commande.Quantite * commande.PrixUnitaire;
@@ -82,8 +86,10 @@ namespace OneCommandes.API.Controllers
             // Envoyer la commande au service bus
             await _serviceBusHelper.EnvoyerMessage(commande).ConfigureAwait(false);
 
-            // journaliser la création de la commande
-            _logger.LogInformation($" Commande créée : {commande.NumeroCommande} pour le produit {commande.IdProduit} créée et transmise au Service Bus avec succès, date {DateTime.UtcNow}");
+            _logger.LogInformation(
+                "Commande {NumeroCommande} créée pour le produit {IdProduit} et transmise au Service Bus.",
+                commande.NumeroCommande,
+                commande.IdProduit);
 
             return CreatedAtAction(nameof(GetAll), new { id = commande.Id }, commande);
         }

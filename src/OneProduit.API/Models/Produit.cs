@@ -6,7 +6,7 @@ namespace OneProduit.API.Models
     public class Produit
     {
         [DisplayName("Identifiant")]
-        public int Id { get; set; }
+        public int? Id { get; set; }
 
         [Required(ErrorMessage = "Le nom est obligatoire")]
         [MaxLength(100, ErrorMessage = "La taille maximale est de 100 caractères")]
