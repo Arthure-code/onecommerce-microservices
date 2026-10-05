@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Azure;
+﻿using Microsoft.Extensions.Azure;
 using OneCommandes.API.Interfaces;
 using OneCommandes.API.Services;
 
@@ -14,14 +14,22 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 //Ajout du serviceBusClient au conteneur d'IoC
-builder.Services.AddAzureClients
-    (configure =>
-    {
-        configure.AddServiceBusClient(builder.Configuration.GetConnectionString("SvCConnectionString"));
+string? connexionServiceBus = builder.Configuration.GetConnectionString("SvCConnectionString");
 
-    });
+if (string.IsNullOrWhiteSpace(connexionServiceBus))
+{
+    builder.Services.AddSingleton<IServiceBusHelper, ServiceBusHorsLigne>();
+}
+else
+{
+    builder.Services.AddAzureClients
+        (configure =>
+        {
+            configure.AddServiceBusClient(connexionServiceBus);
+        });
 
-builder.Services.AddScoped<IServiceBusHelper, ServiceBusHelper>();
+    builder.Services.AddScoped<IServiceBusHelper, ServiceBusHelper>();
+}
 
 var app = builder.Build();
 

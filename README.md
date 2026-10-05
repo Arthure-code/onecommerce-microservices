@@ -56,6 +56,12 @@ dotnet run --project One.AppHost
 
 The shop answers on `https://localhost:7225`, and each API carries its own Swagger page.
 
+Orders are accepted and logged until a broker is configured. To post them for real, give the order service a connection string rather than writing one into the repository.
+
+```bash
+dotnet user-secrets --project src/OneCommandes.API set ConnectionStrings:SvCConnectionString "the connection string"
+```
+
 ```bash
 dotnet test
 ```
