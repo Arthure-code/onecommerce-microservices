@@ -1,119 +1,166 @@
-﻿using Moq;
-using Xunit;
+using AutoFixture;
+using AutoFixture.AutoMoq;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using OneCommerce.MVC.Interfaces;
+using Moq;
 using OneCommerce.MVC.Controllers;
+using OneCommerce.MVC.Interfaces;
 using OneCommerce.MVC.Models;
 
-namespace OneCommerce.MVC.Tests
+namespace OneCommerce.MVC.Tests.Controllers
 {
     public class CommandesControllerTests
-{
-    private readonly Mock<ICommandesService> _mockCommandesService;
-    private readonly Mock<IFideliteService> _mockFideliteService;
-    private readonly Mock<IProduitService> _mockProduitService;
-    private readonly CommandesController _controller;
-
-    public CommandesControllerTests()
     {
-        _mockCommandesService = new Mock<ICommandesService>();
-        _mockFideliteService = new Mock<IFideliteService>();
-        _mockProduitService = new Mock<IProduitService>();
+        private readonly IFixture _fixture;
+        private readonly Mock<ICommandesService> _commandesService;
+        private readonly Mock<IFideliteService> _fideliteService;
+        private readonly Mock<IProduitService> _produitService;
+        private readonly CommandesController _controller;
 
-        _controller = new CommandesController(
-            _mockCommandesService.Object,
-            _mockFideliteService.Object,
-            _mockProduitService.Object
-        );
+        public CommandesControllerTests()
+        {
+            _fixture = new Fixture().Customize(new AutoMoqCustomization());
+
+            _commandesService = _fixture.Freeze<Mock<ICommandesService>>();
+            _fideliteService = _fixture.Freeze<Mock<IFideliteService>>();
+            _produitService = _fixture.Freeze<Mock<IProduitService>>();
+
+            // Le contrôleur est bâti par son constructeur seul : laisser
+            // AutoFixture remplir ses propriétés revient à lui demander un
+            // ViewDataDictionary, qu'il ne sait pas construire.
+            _controller = _fixture.Build<CommandesController>().OmitAutoProperties().Create();
+        }
+
+        [Fact]
+        public async Task Index_RendLHistorique()
+        {
+            // Given un service qui connaît des commandes
+            IEnumerable<Commande> historique = _fixture.CreateMany<Commande>();
+            _commandesService.Setup(s => s.GetAllAsync()).ReturnsAsync(historique);
+
+            // When
+            IActionResult resultat = await _controller.Index();
+
+            // Then
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            Assert.Same(historique, vue.Model);
+        }
+
+        [Fact]
+        public async Task Create_PrepareLaCommandeAPartirDuCatalogue()
+        {
+            // Given un produit du catalogue
+            Produit produit = _fixture.Create<Produit>();
+            _produitService.Setup(s => s.GetProduitById(produit.Id!.Value)).ReturnsAsync(produit);
+
+            // When la page de commande est ouverte
+            IActionResult resultat = await _controller.Create(produit.Id!.Value);
+
+            // Then le prix vient du catalogue, pas du visiteur
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            Commande commande = Assert.IsType<Commande>(vue.Model);
+            Assert.Equal(produit.Id, commande.IdProduit);
+            Assert.Equal(produit.Prix, commande.PrixUnitaire);
+            Assert.Same(produit, commande.Produit);
+        }
+
+        [Fact]
+        public async Task Create_RendNonTrouveQuandLeProduitNExistePas()
+        {
+            // Given un identifiant absent du catalogue
+            _produitService
+                .Setup(s => s.GetProduitById(It.IsAny<int>()))
+                .ReturnsAsync((Produit?)null);
+
+            // When
+            IActionResult resultat = await _controller.Create(_fixture.Create<int>());
+
+            // Then
+            Assert.IsType<NotFoundResult>(resultat);
+        }
+
+        [Fact]
+        public async Task Create_RendLeFormulaireQuandLeModeleEstInvalide()
+        {
+            // Given un modèle que la validation a rejeté
+            Commande commande = _fixture.Create<Commande>();
+            Produit produit = _fixture.Create<Produit>();
+            _produitService.Setup(s => s.GetProduitById(commande.IdProduit)).ReturnsAsync(produit);
+            _controller.ModelState.AddModelError(nameof(Commande.AdresseLivraison), "L'adresse est obligatoire");
+
+            // When
+            IActionResult resultat = await _controller.Create(commande);
+
+            // Then la page revient avec son produit, et rien n'est commandé
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            Assert.Same(produit, Assert.IsType<Commande>(vue.Model).Produit);
+            _commandesService.Verify(s => s.CreateAsync(It.IsAny<Commande>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Create_RefuseUnNumeroDeFideliteInconnu()
+        {
+            // Given un numéro qu'aucune carte ne porte
+            Commande commande = _fixture.Create<Commande>();
+            Fidelite carteIntrouvable = _fixture.Build<Fidelite>()
+                .With(f => f.NumeroFidelite, string.Empty)
+                .Create();
+
+            _fideliteService
+                .Setup(s => s.GetFideliteByNumeroAsync(It.IsAny<string>()))
+                .ReturnsAsync(carteIntrouvable);
+            _produitService
+                .Setup(s => s.GetProduitById(commande.IdProduit))
+                .ReturnsAsync(_fixture.Create<Produit>());
+
+            // When
+            IActionResult resultat = await _controller.Create(commande);
+
+            // Then le visiteur lit pourquoi, et rien n'est commandé
+            Assert.IsType<ViewResult>(resultat);
+            Assert.True(_controller.ModelState.ContainsKey(nameof(Commande.NumeroFideliteClient)));
+            _commandesService.Verify(s => s.CreateAsync(It.IsAny<Commande>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Create_EnvoieLaCommandeEtRevientALHistorique()
+        {
+            // Given une carte connue et un service qui accepte la commande
+            Commande commande = _fixture.Create<Commande>();
+            _fideliteService
+                .Setup(s => s.GetFideliteByNumeroAsync(commande.NumeroFideliteClient))
+                .ReturnsAsync(_fixture.Create<Fidelite>());
+            _commandesService
+                .Setup(s => s.CreateAsync(It.IsAny<Commande>()))
+                .ReturnsAsync(_fixture.Create<Commande>());
+
+            // When
+            IActionResult resultat = await _controller.Create(commande);
+
+            // Then
+            RedirectToActionResult redirection = Assert.IsType<RedirectToActionResult>(resultat);
+            Assert.Equal(nameof(CommandesController.Index), redirection.ActionName);
+            _commandesService.Verify(s => s.CreateAsync(commande), Times.Once);
+        }
+
+        [Fact]
+        public async Task Create_LeDitQuandLaCommandeEchoue()
+        {
+            // Given une carte connue et un service qui ne crée rien
+            Commande commande = _fixture.Create<Commande>();
+            _fideliteService
+                .Setup(s => s.GetFideliteByNumeroAsync(commande.NumeroFideliteClient))
+                .ReturnsAsync(_fixture.Create<Fidelite>());
+            _commandesService
+                .Setup(s => s.CreateAsync(It.IsAny<Commande>()))
+                .ReturnsAsync((Commande?)null);
+
+            // When
+            IActionResult resultat = await _controller.Create(commande);
+
+            // Then le visiteur reste sur sa commande, et lit pourquoi
+            ViewResult vue = Assert.IsType<ViewResult>(resultat);
+            Assert.Same(commande, vue.Model);
+            Assert.False(_controller.ModelState.IsValid);
+        }
     }
-
-    [Fact]
-    public async Task Create_Post_ModelStateInvalid_ReturnsViewWithProduit()
-    {
-        // Etant donné
-        var commande = new Commande { IdProduit = 1 };
-        _controller.ModelState.AddModelError("NomProduit", "Required");
-
-        var produit = new Produit { Id = 1, Nom = "Test Produit", Prix = 10 };
-        _mockProduitService.Setup(p => p.GetProduitById(1))
-            .ReturnsAsync(produit);
-
-        // Lorsque
-        var result = await _controller.Create(commande);
-
-        // Alors
-        var viewResult = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsType<Commande>(viewResult.Model);
-        Assert.Equal(produit, model.Produit);
-    }
-
-    [Fact]
-    public async Task Create_Post_FideliteNotFound_ReturnsViewWithModelError()
-    {
-        // Etant donné
-        var commande = new Commande { IdProduit = 1, NumeroFideliteClient = "ONE-9999" };
-
-        var produit = new Produit { Id = 1, Nom = "Produit", Prix = 20 };
-        _mockProduitService.Setup(p => p.GetProduitById(1))
-            .ReturnsAsync(produit);
-
-        _mockFideliteService.Setup(f => f.GetFideliteByNumeroAsync("ONE-9999"))
-            .ReturnsAsync(new Fidelite { NumeroFidelite = "" }); // fidélité introuvable
-
-        // Lorsque
-        var result = await _controller.Create(commande);
-
-        // Alors
-        var viewResult = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsType<Commande>(viewResult.Model);
-        Assert.Equal(produit, model.Produit);
-        Assert.True(_controller.ModelState.ContainsKey("NumeroFideliteClient"));
-    }
-
-    [Fact]
-    public async Task Create_Post_SuccessfulCreation_RedirectsToIndex()
-    {
-        // Etant donné
-        var commande = new Commande { IdProduit = 1, NumeroFideliteClient = "ONE-1001" };
-
-        _mockFideliteService.Setup(f => f.GetFideliteByNumeroAsync("ONE-1001"))
-            .ReturnsAsync(new Fidelite { NumeroFidelite = "ONE-1001" });
-
-        _mockCommandesService.Setup(c => c.CreateAsync(commande))
-            .ReturnsAsync(new Commande { Id = 99, NumeroCommande = "ONE-CMD-123456" });
-
-        // Lorsque
-        var result = await _controller.Create(commande);
-
-        // Alors
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Index", redirect.ActionName);
-    }
-
-    [Fact]
-    public async Task Create_Post_CreationFails_ReturnsViewWithModelError()
-    {
-        // Etant donné
-        var commande = new Commande { IdProduit = 1, NumeroFideliteClient = "ONE-1001" };
-
-        _mockFideliteService.Setup(f => f.GetFideliteByNumeroAsync("ONE-1001"))
-            .ReturnsAsync(new Fidelite { NumeroFidelite = "ONE-1001" });
-
-        _mockCommandesService.Setup(c => c.CreateAsync(commande))
-            .ReturnsAsync((Commande?)null); // simulate failure
-
-        var produit = new Produit { Id = 1, Nom = "Produit", Prix = 15 };
-        _mockProduitService.Setup(p => p.GetProduitById(1))
-            .ReturnsAsync(produit);
-
-        // Lorsque
-        var result = await _controller.Create(commande);
-
-        // Alors
-        var viewResult = Assert.IsType<ViewResult>(result);
-        Assert.True(_controller.ModelState.ContainsKey(""));
-    }
-}
 }

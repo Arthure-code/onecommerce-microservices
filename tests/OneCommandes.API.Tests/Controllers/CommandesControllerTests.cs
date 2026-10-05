@@ -1,5 +1,6 @@
+using AutoFixture;
+using AutoFixture.AutoMoq;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moq;
 using OneCommandes.API.Controllers;
 using OneCommandes.API.Interfaces;
@@ -9,37 +10,19 @@ namespace OneCommandes.API.Tests.Controllers
 {
     public class CommandesControllerTests
     {
+        private readonly IFixture _fixture;
         private readonly Mock<IServiceBusHelper> _serviceBusHelper;
-        private readonly Mock<ILogger<CommandesController>> _logger;
         private readonly CommandesController _controller;
-        private readonly Commande _commande;
-        private readonly Commande _autreCommande;
 
         public CommandesControllerTests()
         {
-            _serviceBusHelper = new Mock<IServiceBusHelper>();
-            _logger = new Mock<ILogger<CommandesController>>();
-            _controller = new CommandesController(_serviceBusHelper.Object, _logger.Object);
+            _fixture = new Fixture().Customize(new AutoMoqCustomization());
 
-            _commande = new Commande
-            {
-                IdProduit = 3,
-                NomProduit = "T-shirt imprimé noir",
-                NumeroFideliteClient = "ONE-100001",
-                Quantite = 2,
-                PrixUnitaire = 30.50m,
-                AdresseLivraison = "123 Rue Sainte-Catherine, Montréal"
-            };
+            _serviceBusHelper = _fixture.Freeze<Mock<IServiceBusHelper>>();
 
-            _autreCommande = new Commande
-            {
-                IdProduit = 4,
-                NomProduit = "T-shirt gris femme",
-                NumeroFideliteClient = "ONE-100002",
-                Quantite = 1,
-                PrixUnitaire = 10.20m,
-                AdresseLivraison = "456 Boulevard Laurier, Québec"
-            };
+            // Le contrôleur est bâti par son constructeur seul, qui reçoit la
+            // messagerie et le journal depuis la fixture.
+            _controller = _fixture.Build<CommandesController>().OmitAutoProperties().Create();
         }
 
         [Fact]
@@ -61,10 +44,10 @@ namespace OneCommandes.API.Tests.Controllers
         public async Task Create_RefuseUneCommandeInvalide()
         {
             // Given un modèle que la validation a rejeté
-            _controller.ModelState.AddModelError("NomProduit", "Le nom du produit est obligatoire");
+            _controller.ModelState.AddModelError(nameof(Commande.NomProduit), "Le nom du produit est obligatoire");
 
             // When
-            ActionResult<Commande> resultat = await _controller.Create(_commande);
+            ActionResult<Commande> resultat = await _controller.Create(_fixture.Create<Commande>());
 
             // Then rien n'est créé, et rien ne part sur la file
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
@@ -74,17 +57,21 @@ namespace OneCommandes.API.Tests.Controllers
         [Fact]
         public async Task Create_DonneUnNumeroUneDateEtUnTotal()
         {
-            // Given une commande complète
+            // Given une commande dont la quantité et le prix sont connus
+            Commande commande = _fixture.Build<Commande>()
+                .With(c => c.Quantite, 2)
+                .With(c => c.PrixUnitaire, 30.50m)
+                .Create();
 
             // When
-            ActionResult<Commande> resultat = await _controller.Create(_commande);
+            ActionResult<Commande> resultat = await _controller.Create(commande);
 
             // Then la commande revient avec ce que le service a posé
             CreatedAtActionResult cree = Assert.IsType<CreatedAtActionResult>(resultat.Result);
-            Commande commande = Assert.IsType<Commande>(cree.Value);
-            Assert.StartsWith("ONE-CMD-", commande.NumeroCommande, StringComparison.Ordinal);
-            Assert.Equal(61.00m, commande.PrixTotal);
-            Assert.Equal(DateTime.UtcNow.Date, commande.DateCommande.Date);
+            Commande rendue = Assert.IsType<Commande>(cree.Value);
+            Assert.StartsWith("ONE-CMD-", rendue.NumeroCommande, StringComparison.Ordinal);
+            Assert.Equal(61.00m, rendue.PrixTotal);
+            Assert.Equal(DateTime.UtcNow.Date, rendue.DateCommande.Date);
         }
 
         [Fact]
@@ -93,11 +80,10 @@ namespace OneCommandes.API.Tests.Controllers
             // Given une messagerie qui accepte le message
             _serviceBusHelper
                 .Setup(m => m.EnvoyerMessage(It.IsAny<Commande>()))
-                .Returns(Task.CompletedTask)
-                .Verifiable();
+                .Returns(Task.CompletedTask);
 
             // When
-            await _controller.Create(_commande);
+            await _controller.Create(_fixture.Create<Commande>());
 
             // Then elle part une fois, avec le numéro que le service a donné
             _serviceBusHelper.Verify(
@@ -117,7 +103,7 @@ namespace OneCommandes.API.Tests.Controllers
                 .Returns(Task.CompletedTask);
 
             // When
-            ActionResult<Commande> resultat = await _controller.Create(_commande);
+            ActionResult<Commande> resultat = await _controller.Create(_fixture.Create<Commande>());
 
             // Then ce qui part sur la file est ce qui revient à l'appelant
             CreatedAtActionResult cree = Assert.IsType<CreatedAtActionResult>(resultat.Result);
@@ -138,7 +124,8 @@ namespace OneCommandes.API.Tests.Controllers
             // When la commande est créée
 
             // Then l'appelant n'obtient pas un succès silencieux
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _controller.Create(_commande));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => _controller.Create(_fixture.Create<Commande>()));
         }
 
         [Fact]
@@ -147,8 +134,10 @@ namespace OneCommandes.API.Tests.Controllers
             // Given deux commandes de suite
 
             // When
-            CreatedAtActionResult premiere = Assert.IsType<CreatedAtActionResult>((await _controller.Create(_commande)).Result);
-            CreatedAtActionResult seconde = Assert.IsType<CreatedAtActionResult>((await _controller.Create(_autreCommande)).Result);
+            CreatedAtActionResult premiere =
+                Assert.IsType<CreatedAtActionResult>((await _controller.Create(_fixture.Create<Commande>())).Result);
+            CreatedAtActionResult seconde =
+                Assert.IsType<CreatedAtActionResult>((await _controller.Create(_fixture.Create<Commande>())).Result);
 
             // Then
             Commande une = Assert.IsType<Commande>(premiere.Value);

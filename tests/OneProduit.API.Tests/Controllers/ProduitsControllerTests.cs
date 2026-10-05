@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using AutoFixture;
+using AutoFixture.AutoMoq;
 using Microsoft.AspNetCore.Mvc;
 using OneProduit.API.Controllers;
 using OneProduit.API.Models;
@@ -8,63 +10,25 @@ namespace OneProduit.API.Tests.Controllers
 {
     public class ProduitsControllerTests
     {
+        private readonly IFixture _fixture;
         private readonly ProduitsController _controller;
-        private readonly Produit _produit;
-        private readonly Produit _produitAModifier;
-        private readonly Produit _modification;
-        private readonly Produit _produitASupprimer;
-        private readonly int _identifiantAuCatalogue;
-        private readonly int _identifiantAbsentDuCatalogue;
 
         public ProduitsControllerTests()
         {
-            _controller = new ProduitsController();
+            _fixture = new Fixture().Customize(new AutoMoqCustomization());
 
-            _produit = new Produit
-            {
-                Id = 99,
-                Nom = "Polo blanc",
-                Description = "Polo blanc homme taille L",
-                Prix = 30.50m,
-                Quantite = 3,
-                Image = "image1.png",
-                Vedette = false
-            };
+            // Le modèle n'accepte qu'un nom sans chiffre et une image .png ou
+            // .jpg, donc la fixture rend d'emblée des produits que sa propre
+            // validation accepte. Tout le reste est tiré par le générateur.
+            _fixture.Customize<Produit>(produit => produit
+                .With(p => p.Nom, Lettres)
+                .With(p => p.Image, () => $"{Lettres()}.png"));
 
-            _produitAModifier = new Produit
-            {
-                Id = 777,
-                Nom = "Chandail avant",
-                Description = "Chandail avant modification",
-                Prix = 12.00m,
-                Quantite = 1,
-                Image = "image777.png"
-            };
-
-            _modification = new Produit
-            {
-                Id = 777,
-                Nom = "Chandail apres",
-                Description = "Chandail apres modification",
-                Prix = 18.75m,
-                Quantite = 5,
-                Image = string.Empty,
-                Vedette = true
-            };
-
-            _produitASupprimer = new Produit
-            {
-                Id = 778,
-                Nom = "Chandail de passage",
-                Description = "Chandail ajoute puis retire",
-                Prix = 9.00m,
-                Quantite = 1,
-                Image = "image778.png"
-            };
-
-            _identifiantAuCatalogue = 3;
-            _identifiantAbsentDuCatalogue = 9999;
+            _controller = _fixture.Build<ProduitsController>().OmitAutoProperties().Create();
         }
+
+        private static string Lettres() =>
+            new(Guid.NewGuid().ToString("N").Where(char.IsLetter).ToArray());
 
         private static IList<ValidationResult> Valider(Produit produit)
         {
@@ -73,6 +37,15 @@ namespace OneProduit.API.Tests.Controllers
 
             return resultats;
         }
+
+        private IEnumerable<Produit> Catalogue()
+        {
+            OkObjectResult reponse = Assert.IsType<OkObjectResult>(_controller.GetProduits().Result);
+
+            return Assert.IsAssignableFrom<IEnumerable<Produit>>(reponse.Value);
+        }
+
+        private int IdentifiantAbsentDuCatalogue() => Catalogue().Max(p => p.Id) + 1;
 
         [Fact]
         public void GetProduits_RendLeCatalogue()
@@ -91,15 +64,17 @@ namespace OneProduit.API.Tests.Controllers
         [Fact]
         public void GetProduit_RendLeProduitDemande()
         {
-            // Given un identifiant que le catalogue porte
+            // Given un produit que le catalogue porte
+            Produit ajoute = _fixture.Create<Produit>();
+            _controller.AddProduit(ajoute);
 
             // When
-            ActionResult<Produit> resultat = _controller.GetProduit(_identifiantAuCatalogue);
+            ActionResult<Produit> resultat = _controller.GetProduit(ajoute.Id);
 
             // Then
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Produit produit = Assert.IsType<Produit>(reponse.Value);
-            Assert.Equal(_identifiantAuCatalogue, produit.Id);
+            Assert.Equal(ajoute.Id, produit.Id);
         }
 
         [Fact]
@@ -108,7 +83,7 @@ namespace OneProduit.API.Tests.Controllers
             // Given un identifiant absent du catalogue
 
             // When
-            ActionResult<Produit> resultat = _controller.GetProduit(_identifiantAbsentDuCatalogue);
+            ActionResult<Produit> resultat = _controller.GetProduit(IdentifiantAbsentDuCatalogue());
 
             // Then
             Assert.IsType<NotFoundObjectResult>(resultat.Result);
@@ -121,7 +96,7 @@ namespace OneProduit.API.Tests.Controllers
             _controller.ModelState.AddModelError(nameof(Produit.Nom), "Le nom est obligatoire");
 
             // When
-            ActionResult<Produit> resultat = _controller.AddProduit(_produit);
+            ActionResult<Produit> resultat = _controller.AddProduit(_fixture.Create<Produit>());
 
             // Then
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
@@ -131,35 +106,41 @@ namespace OneProduit.API.Tests.Controllers
         public void AddProduit_RendLAdresseOuRelireLeProduit()
         {
             // Given un produit complet
+            Produit ajoute = _fixture.Create<Produit>();
 
             // When
-            ActionResult<Produit> resultat = _controller.AddProduit(_produit);
+            ActionResult<Produit> resultat = _controller.AddProduit(ajoute);
 
             // Then
             CreatedAtActionResult cree = Assert.IsType<CreatedAtActionResult>(resultat.Result);
             Produit produit = Assert.IsType<Produit>(cree.Value);
-            Assert.Equal(_produit.Nom, produit.Nom);
-            Assert.Equal(_produit.Id, cree.RouteValues!["id"]);
+            Assert.Equal(ajoute.Nom, produit.Nom);
+            Assert.Equal(ajoute.Id, cree.RouteValues!["id"]);
         }
-
 
         [Fact]
         public void UpdateProduit_ReecritLeProduitSansToucherALImage()
         {
-            // Given un produit du catalogue
-            _controller.AddProduit(_produitAModifier);
+            // Given un produit du catalogue, et une modification sans image
+            Produit ajoute = _fixture.Create<Produit>();
+            _controller.AddProduit(ajoute);
 
-            // When il est modifié sans nouvelle image
-            ActionResult<Produit> resultat = _controller.UpdateProduit(_produitAModifier.Id, _modification);
+            Produit modification = _fixture.Build<Produit>()
+                .With(p => p.Image, string.Empty)
+                .With(p => p.Vedette, true)
+                .Create();
+
+            // When
+            ActionResult<Produit> resultat = _controller.UpdateProduit(ajoute.Id, modification);
 
             // Then les champs changent et l'image reste celle d'avant
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Produit produit = Assert.IsType<Produit>(reponse.Value);
-            Assert.Equal(_modification.Nom, produit.Nom);
-            Assert.Equal(_modification.Prix, produit.Prix);
-            Assert.Equal(_modification.Quantite, produit.Quantite);
+            Assert.Equal(modification.Nom, produit.Nom);
+            Assert.Equal(modification.Prix, produit.Prix);
+            Assert.Equal(modification.Quantite, produit.Quantite);
             Assert.True(produit.Vedette);
-            Assert.Equal("image777.png", produit.Image);
+            Assert.Equal(ajoute.Image, produit.Image);
         }
 
         [Fact]
@@ -168,7 +149,8 @@ namespace OneProduit.API.Tests.Controllers
             // Given un identifiant absent du catalogue
 
             // When
-            ActionResult<Produit> resultat = _controller.UpdateProduit(_identifiantAbsentDuCatalogue, _modification);
+            ActionResult<Produit> resultat =
+                _controller.UpdateProduit(IdentifiantAbsentDuCatalogue(), _fixture.Create<Produit>());
 
             // Then
             Assert.IsType<NotFoundObjectResult>(resultat.Result);
@@ -181,7 +163,8 @@ namespace OneProduit.API.Tests.Controllers
             _controller.ModelState.AddModelError(nameof(Produit.Nom), "Le nom est obligatoire");
 
             // When
-            ActionResult<Produit> resultat = _controller.UpdateProduit(_identifiantAuCatalogue, _modification);
+            ActionResult<Produit> resultat =
+                _controller.UpdateProduit(_fixture.Create<Produit>().Id, _fixture.Create<Produit>());
 
             // Then
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
@@ -191,15 +174,15 @@ namespace OneProduit.API.Tests.Controllers
         public void DeleteProduit_RetireLeProduitDuCatalogue()
         {
             // Given un produit que le catalogue porte
-            _controller.AddProduit(_produitASupprimer);
+            Produit ajoute = _fixture.Create<Produit>();
+            _controller.AddProduit(ajoute);
 
             // When
-            IActionResult resultat = _controller.DeleteProduit(_produitASupprimer.Id);
+            IActionResult resultat = _controller.DeleteProduit(ajoute.Id);
 
             // Then il ne s'y trouve plus
             Assert.IsType<NoContentResult>(resultat);
-            ActionResult<Produit> relecture = _controller.GetProduit(_produitASupprimer.Id);
-            Assert.IsType<NotFoundObjectResult>(relecture.Result);
+            Assert.IsType<NotFoundObjectResult>(_controller.GetProduit(ajoute.Id).Result);
         }
 
         [Fact]
@@ -208,7 +191,7 @@ namespace OneProduit.API.Tests.Controllers
             // Given un identifiant absent du catalogue
 
             // When
-            IActionResult resultat = _controller.DeleteProduit(_identifiantAbsentDuCatalogue);
+            IActionResult resultat = _controller.DeleteProduit(IdentifiantAbsentDuCatalogue());
 
             // Then
             Assert.IsType<NotFoundObjectResult>(resultat);
@@ -220,14 +203,19 @@ namespace OneProduit.API.Tests.Controllers
         [InlineData("")]
         public void UnPrixAvecDesCentimesEstAccepteQuelleQueSoitLaCultureDuServeur(string culture)
         {
-            // Given un serveur dont la culture n'est pas celle du poste
+            // Given un prix à centimes, et un serveur dont la culture n'est pas
+            // celle du poste
+            Produit produit = _fixture.Build<Produit>()
+                .With(p => p.Prix, 30.50m)
+                .Create();
+
             CultureInfo precedente = CultureInfo.CurrentCulture;
             CultureInfo.CurrentCulture = new CultureInfo(culture);
 
             try
             {
                 // When le modèle est validé
-                IList<ValidationResult> erreurs = Valider(_produit);
+                IList<ValidationResult> erreurs = Valider(produit);
 
                 // Then aucune erreur ne porte sur le prix
                 Assert.DoesNotContain(erreurs, e => e.MemberNames.Contains(nameof(Produit.Prix)));
@@ -242,9 +230,10 @@ namespace OneProduit.API.Tests.Controllers
         public void UneImagePngEstAcceptee()
         {
             // Given un produit dont l'image porte une extension connue
+            Produit produit = _fixture.Create<Produit>();
 
             // When le modèle est validé
-            IList<ValidationResult> erreurs = Valider(_produit);
+            IList<ValidationResult> erreurs = Valider(produit);
 
             // Then
             Assert.DoesNotContain(erreurs, e => e.MemberNames.Contains(nameof(Produit.Image)));

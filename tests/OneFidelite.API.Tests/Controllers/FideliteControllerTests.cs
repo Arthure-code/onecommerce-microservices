@@ -1,3 +1,5 @@
+using AutoFixture;
+using AutoFixture.AutoMoq;
 using Microsoft.AspNetCore.Mvc;
 using OneFidelite.API.Controllers;
 using OneFidelite.API.Models;
@@ -6,40 +8,21 @@ namespace OneFidelite.API.Tests.Controllers
 {
     public class FideliteControllerTests
     {
+        private readonly IFixture _fixture;
         private readonly FideliteController _controller;
-        private readonly string _numeroAuFichier;
-        private readonly string _numeroAbsentDuFichier;
-        private readonly Fidelite _inscription;
-        private readonly Fidelite _autreInscription;
-        private readonly Fidelite _memeCourrielEnMajuscules;
 
         public FideliteControllerTests()
         {
-            _controller = new FideliteController();
+            _fixture = new Fixture().Customize(new AutoMoqCustomization());
 
-            _numeroAuFichier = "ONE-100001";
-            _numeroAbsentDuFichier = "ONE-000000";
+            _controller = _fixture.Build<FideliteController>().OmitAutoProperties().Create();
+        }
 
-            _inscription = new Fidelite
-            {
-                NomClient = "Denis Girard",
-                CourrielClient = "denis.girard@example.com",
-                Telephone = "514-555-0199"
-            };
+        private IEnumerable<Fidelite> Fichier()
+        {
+            OkObjectResult reponse = Assert.IsType<OkObjectResult>(_controller.GetAllFidelites().Result);
 
-            _autreInscription = new Fidelite
-            {
-                NomClient = "Hélène Roy",
-                CourrielClient = "helene.roy@example.com",
-                Telephone = "418-555-0144"
-            };
-
-            _memeCourrielEnMajuscules = new Fidelite
-            {
-                NomClient = "Denis Girard",
-                CourrielClient = "DENIS.GIRARD@EXAMPLE.COM",
-                Telephone = "514-555-0199"
-            };
+            return Assert.IsAssignableFrom<IEnumerable<Fidelite>>(reponse.Value);
         }
 
         [Fact]
@@ -60,14 +43,15 @@ namespace OneFidelite.API.Tests.Controllers
         public void GetFideliteByNumero_RendLaCarteDemandee()
         {
             // Given un numéro que le fichier porte
+            string numero = Fichier().First().NumeroFidelite;
 
             // When
-            ActionResult<Fidelite> resultat = _controller.GetFideliteByNumero(_numeroAuFichier);
+            ActionResult<Fidelite> resultat = _controller.GetFideliteByNumero(numero);
 
             // Then
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Fidelite fidelite = Assert.IsType<Fidelite>(reponse.Value);
-            Assert.Equal(_numeroAuFichier, fidelite.NumeroFidelite);
+            Assert.Equal(numero, fidelite.NumeroFidelite);
         }
 
         [Fact]
@@ -76,7 +60,7 @@ namespace OneFidelite.API.Tests.Controllers
             // Given un numéro qu'aucune carte ne porte
 
             // When
-            ActionResult<Fidelite> resultat = _controller.GetFideliteByNumero(_numeroAbsentDuFichier);
+            ActionResult<Fidelite> resultat = _controller.GetFideliteByNumero(_fixture.Create<string>());
 
             // Then
             Assert.IsType<NotFoundResult>(resultat.Result);
@@ -89,7 +73,7 @@ namespace OneFidelite.API.Tests.Controllers
             _controller.ModelState.AddModelError(nameof(Fidelite.CourrielClient), "Le courriel est obligatoire");
 
             // When
-            ActionResult<Fidelite> resultat = _controller.CreateFidelite(_inscription);
+            ActionResult<Fidelite> resultat = _controller.CreateFidelite(_fixture.Create<Fidelite>());
 
             // Then
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
@@ -101,7 +85,7 @@ namespace OneFidelite.API.Tests.Controllers
             // Given une inscription complète
 
             // When
-            ActionResult<Fidelite> resultat = _controller.CreateFidelite(_autreInscription);
+            ActionResult<Fidelite> resultat = _controller.CreateFidelite(_fixture.Create<Fidelite>());
 
             // Then la carte revient avec ce que le service a posé
             CreatedAtActionResult creee = Assert.IsType<CreatedAtActionResult>(resultat.Result);
@@ -115,10 +99,15 @@ namespace OneFidelite.API.Tests.Controllers
         public void CreateFidelite_RefuseUnCourrielDejaInscritQuelleQueSoitSaCasse()
         {
             // Given un courriel déjà porté par une carte
-            _controller.CreateFidelite(_inscription);
+            Fidelite inscription = _fixture.Create<Fidelite>();
+            _controller.CreateFidelite(inscription);
+
+            Fidelite memeCourrielEnMajuscules = _fixture.Build<Fidelite>()
+                .With(f => f.CourrielClient, inscription.CourrielClient.ToUpperInvariant())
+                .Create();
 
             // When le même courriel revient en majuscules
-            ActionResult<Fidelite> resultat = _controller.CreateFidelite(_memeCourrielEnMajuscules);
+            ActionResult<Fidelite> resultat = _controller.CreateFidelite(memeCourrielEnMajuscules);
 
             // Then c'est le même client, et il n'est pas inscrit deux fois
             Assert.IsType<ConflictObjectResult>(resultat.Result);

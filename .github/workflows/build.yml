@@ -50,7 +50,8 @@ jobs:
             /d:sonar.token="$SONAR_TOKEN" \
             /d:sonar.host.url="https://sonarcloud.io" \
             /d:sonar.scanner.scanAll=true \
-            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
+            /d:sonar.coverage.exclusions="**/Program.cs,One.AppHost/**,One.ServiceDefaults/**"
           dotnet build OneCommerce.sln --no-incremental
           dotnet test OneCommerce.sln --no-build \
             --collect:"XPlat Code Coverage;Format=opencover"
