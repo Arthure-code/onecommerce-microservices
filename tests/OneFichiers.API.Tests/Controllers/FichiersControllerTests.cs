@@ -11,39 +11,20 @@ namespace OneFichiers.API.Tests.Controllers
 {
     public class FichiersControllerTests
     {
-        private readonly IFixture _fixture;
-        private readonly Mock<IMagasinImages> _magasin;
-        private readonly FichiersController _controller;
-        private readonly DefaultHttpContext _contexte;
-
-        public FichiersControllerTests()
-        {
-            _fixture = new Fixture().Customize(new AutoMoqCustomization());
-
-            // Le nom proposé doit annoncer une image, sinon le contrôleur le
-            // refuse avant même d'atteindre ce que le test vérifie.
-            _fixture.Customize<DemandeLien>(demande => demande
-                .With(d => d.NomFichier, () => $"{_fixture.Create<string>().Replace("-", "")}.png"));
-
-            _magasin = _fixture.Freeze<Mock<IMagasinImages>>();
-            _contexte = new DefaultHttpContext();
-            _controller = _fixture.Build<FichiersController>()
-                .OmitAutoProperties()
-                .Create();
-            _controller.ControllerContext = new ControllerContext { HttpContext = _contexte };
-        }
-
         [Fact]
         public async Task DemanderLienTeleversement_RefuseUnCorpsAbsent()
         {
             // Given aucune demande
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
 
             // When
-            ActionResult<LienTeleversement> resultat = await _controller.DemanderLienTeleversement(null);
+            ActionResult<LienTeleversement> resultat = await controleur.DemanderLienTeleversement(null);
 
             // Then rien n'est signé
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
-            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
+            magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Theory]
@@ -55,16 +36,20 @@ namespace OneFichiers.API.Tests.Controllers
         public async Task DemanderLienTeleversement_RefuseUnNomQuiDesigneUnAutreEndroitQueLeDossierDesImages(string nomFichier)
         {
             // Given un nom de fichier qui sort du dossier des images
-            DemandeLien demande = _fixture.Build<DemandeLien>()
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
+
+            DemandeLien demande = generateur.Build<DemandeLien>()
                 .With(d => d.NomFichier, nomFichier)
                 .Create();
 
             // When
-            ActionResult<LienTeleversement> resultat = await _controller.DemanderLienTeleversement(demande);
+            ActionResult<LienTeleversement> resultat = await controleur.DemanderLienTeleversement(demande);
 
             // Then aucun lien n'est signé, et l'appelant lit pourquoi
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
-            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
+            magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Theory]
@@ -75,53 +60,65 @@ namespace OneFichiers.API.Tests.Controllers
         public async Task DemanderLienTeleversement_RefuseCeQuiNEstPasUneImage(string nomFichier)
         {
             // Given un nom de fichier qui n'annonce pas une image
-            DemandeLien demande = _fixture.Build<DemandeLien>()
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
+
+            DemandeLien demande = generateur.Build<DemandeLien>()
                 .With(d => d.NomFichier, nomFichier)
                 .Create();
 
             // When
-            ActionResult<LienTeleversement> resultat = await _controller.DemanderLienTeleversement(demande);
+            ActionResult<LienTeleversement> resultat = await controleur.DemanderLienTeleversement(demande);
 
             // Then
             Assert.IsType<BadRequestObjectResult>(resultat.Result);
-            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
+            magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
         public async Task DemanderLienTeleversement_RendLeLienQueLeMagasinASigne()
         {
             // Given un magasin qui signe le lien demandé
-            LienTeleversement lien = _fixture.Create<LienTeleversement>();
-            _magasin
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
+
+            LienTeleversement lien = generateur.Create<LienTeleversement>();
+            magasin
                 .Setup(m => m.LienTeleversementAsync(It.IsAny<string>()))
                 .ReturnsAsync(lien);
 
             // When
             ActionResult<LienTeleversement> resultat =
-                await _controller.DemanderLienTeleversement(_fixture.Create<DemandeLien>());
+                await controleur.DemanderLienTeleversement(generateur.Create<DemandeLien>());
 
             // Then le lien part tel quel, l'API ne porte aucun octet
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Assert.Same(lien, reponse.Value);
-            _magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Once);
+            magasin.Verify(m => m.LienTeleversementAsync(It.IsAny<string>()), Times.Once);
         }
 
         [Fact]
         public async Task DemanderLienTeleversement_NeReprendPasLeNomProposeMaisGardeSonExtension()
         {
             // Given un magasin qui retient le nom qu'on lui passe
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
+
             string? nomSigne = null;
-            _magasin
+            magasin
                 .Setup(m => m.LienTeleversementAsync(It.IsAny<string>()))
                 .Callback<string>(n => nomSigne = n)
-                .ReturnsAsync(_fixture.Create<LienTeleversement>());
+                .ReturnsAsync(generateur.Create<LienTeleversement>());
 
-            DemandeLien demande = _fixture.Create<DemandeLien>();
+            DemandeLien demande = generateur.Create<DemandeLien>();
 
             // When deux visiteurs proposent le même nom
-            await _controller.DemanderLienTeleversement(demande);
+            await controleur.DemanderLienTeleversement(demande);
             string? premier = nomSigne;
-            await _controller.DemanderLienTeleversement(demande);
+            await controleur.DemanderLienTeleversement(demande);
 
             // Then aucun des deux n'écrase l'image de l'autre
             Assert.NotNull(premier);
@@ -134,78 +131,123 @@ namespace OneFichiers.API.Tests.Controllers
         public async Task DemanderLienLecture_RendLaBaseEtLaSignature()
         {
             // Given un magasin qui signe une lecture
-            LienLecture lien = _fixture.Create<LienLecture>();
-            _magasin.Setup(m => m.LienLectureAsync()).ReturnsAsync(lien);
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
+
+            LienLecture lien = generateur.Create<LienLecture>();
+            magasin.Setup(m => m.LienLectureAsync()).ReturnsAsync(lien);
 
             // When
-            ActionResult<LienLecture> resultat = await _controller.DemanderLienLecture();
+            ActionResult<LienLecture> resultat = await controleur.DemanderLienLecture();
 
             // Then une seule signature sert à toutes les images d'une page
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Assert.Same(lien, reponse.Value);
-            _magasin.Verify(m => m.LienLectureAsync(), Times.Once);
+            magasin.Verify(m => m.LienLectureAsync(), Times.Once);
         }
 
         [Fact]
         public async Task Deposer_RendNonTrouveQuandLesOctetsVontDirectementAuConteneur()
         {
             // Given un magasin qui ne reçoit pas les octets
-            _magasin.Setup(m => m.RecoitLesOctets).Returns(false);
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
+
+            magasin.Setup(m => m.RecoitLesOctets).Returns(false);
 
             // When
-            IActionResult resultat = await _controller.Deposer(_fixture.Create<DemandeLien>().NomFichier);
+            IActionResult resultat = await controleur.Deposer(generateur.Create<DemandeLien>().NomFichier);
 
             // Then la route n'existe pas pour l'appelant
             Assert.IsType<NotFoundResult>(resultat);
-            _magasin.Verify(m => m.EnregistrerAsync(It.IsAny<string>(), It.IsAny<Stream>()), Times.Never);
+            magasin.Verify(m => m.EnregistrerAsync(It.IsAny<string>(), It.IsAny<Stream>()), Times.Never);
         }
 
         [Fact]
         public async Task Deposer_RefuseUnContenuVide()
         {
             // Given un dépôt annoncé sans octets
-            _magasin.Setup(m => m.RecoitLesOctets).Returns(true);
-            _contexte.Request.ContentLength = 0;
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            var contexte = new DefaultHttpContext();
+            FichiersController controleur = Controleur(generateur, contexte);
+
+            magasin.Setup(m => m.RecoitLesOctets).Returns(true);
+            contexte.Request.ContentLength = 0;
 
             // When
-            IActionResult resultat = await _controller.Deposer(_fixture.Create<DemandeLien>().NomFichier);
+            IActionResult resultat = await controleur.Deposer(generateur.Create<DemandeLien>().NomFichier);
 
             // Then
             Assert.IsType<BadRequestObjectResult>(resultat);
-            _magasin.Verify(m => m.EnregistrerAsync(It.IsAny<string>(), It.IsAny<Stream>()), Times.Never);
+            magasin.Verify(m => m.EnregistrerAsync(It.IsAny<string>(), It.IsAny<Stream>()), Times.Never);
         }
 
         [Fact]
         public async Task Deposer_RefuseUnNomQuiSortDuDossierDesImages()
         {
             // Given un magasin qui reçoit les octets
-            _magasin.Setup(m => m.RecoitLesOctets).Returns(true);
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            FichiersController controleur = Controleur(generateur, new DefaultHttpContext());
+
+            magasin.Setup(m => m.RecoitLesOctets).Returns(true);
 
             // When le nom désigne un autre endroit
-            IActionResult resultat = await _controller.Deposer("../../appsettings.json");
+            IActionResult resultat = await controleur.Deposer("../../appsettings.json");
 
             // Then rien n'est écrit
             Assert.IsType<BadRequestObjectResult>(resultat);
-            _magasin.Verify(m => m.EnregistrerAsync(It.IsAny<string>(), It.IsAny<Stream>()), Times.Never);
+            magasin.Verify(m => m.EnregistrerAsync(It.IsAny<string>(), It.IsAny<Stream>()), Times.Never);
         }
 
         [Fact]
         public async Task Deposer_ConfieLesOctetsAuMagasin()
         {
             // Given un dépôt qui porte des octets
-            string nomFichier = _fixture.Create<DemandeLien>().NomFichier;
-            byte[] contenu = _fixture.Create<byte[]>();
+            IFixture generateur = Generateur();
+            Mock<IMagasinImages> magasin = generateur.Freeze<Mock<IMagasinImages>>();
+            var contexte = new DefaultHttpContext();
+            FichiersController controleur = Controleur(generateur, contexte);
 
-            _magasin.Setup(m => m.RecoitLesOctets).Returns(true);
-            _contexte.Request.Body = new MemoryStream(contenu);
-            _contexte.Request.ContentLength = contenu.Length;
+            string nomFichier = generateur.Create<DemandeLien>().NomFichier;
+            byte[] contenu = generateur.Create<byte[]>();
+
+            magasin.Setup(m => m.RecoitLesOctets).Returns(true);
+            contexte.Request.Body = new MemoryStream(contenu);
+            contexte.Request.ContentLength = contenu.Length;
 
             // When
-            IActionResult resultat = await _controller.Deposer(nomFichier);
+            IActionResult resultat = await controleur.Deposer(nomFichier);
 
             // Then
             Assert.IsType<NoContentResult>(resultat);
-            _magasin.Verify(m => m.EnregistrerAsync(nomFichier, _contexte.Request.Body), Times.Once);
+            magasin.Verify(m => m.EnregistrerAsync(nomFichier, contexte.Request.Body), Times.Once);
+        }
+
+        // Le nom proposé doit annoncer une image, sinon le contrôleur le refuse
+        // avant même d'atteindre ce que le test vérifie.
+        private static IFixture Generateur()
+        {
+            IFixture generateur = new Fixture().Customize(new AutoMoqCustomization());
+
+            generateur.Customize<DemandeLien>(demande => demande
+                .With(d => d.NomFichier, () => $"{Guid.NewGuid():N}.png"));
+
+            return generateur;
+        }
+
+        private static FichiersController Controleur(IFixture generateur, HttpContext contexte)
+        {
+            FichiersController controleur = generateur.Build<FichiersController>()
+                .OmitAutoProperties()
+                .Create();
+
+            controleur.ControllerContext = new ControllerContext { HttpContext = contexte };
+
+            return controleur;
         }
     }
 }

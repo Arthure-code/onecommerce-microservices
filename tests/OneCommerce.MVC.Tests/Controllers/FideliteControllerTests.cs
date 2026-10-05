@@ -10,31 +10,19 @@ namespace OneCommerce.MVC.Tests.Controllers
 {
     public class FideliteControllerTests
     {
-        private readonly IFixture _fixture;
-        private readonly Mock<IFideliteService> _fideliteService;
-        private readonly FideliteController _controller;
-
-        public FideliteControllerTests()
-        {
-            _fixture = new Fixture().Customize(new AutoMoqCustomization());
-
-            _fideliteService = _fixture.Freeze<Mock<IFideliteService>>();
-
-            // Le contrôleur est bâti par son constructeur seul : laisser
-            // AutoFixture remplir ses propriétés revient à lui demander un
-            // ViewDataDictionary, qu'il ne sait pas construire.
-            _controller = _fixture.Build<FideliteController>().OmitAutoProperties().Create();
-        }
-
         [Fact]
         public async Task Index_RendLesCartesDuService()
         {
             // Given un service qui connaît des cartes
-            List<Fidelite> cartes = _fixture.CreateMany<Fidelite>().ToList();
-            _fideliteService.Setup(s => s.GetFidelitesAsync()).ReturnsAsync(cartes);
+            IFixture generateur = Generateur();
+            Mock<IFideliteService> fideliteService = generateur.Freeze<Mock<IFideliteService>>();
+            FideliteController controleur = Controleur(generateur);
+
+            List<Fidelite> cartes = generateur.CreateMany<Fidelite>().ToList();
+            fideliteService.Setup(s => s.GetFidelitesAsync()).ReturnsAsync(cartes);
 
             // When
-            IActionResult resultat = await _controller.Index();
+            IActionResult resultat = await controleur.Index();
 
             // Then
             ViewResult vue = Assert.IsType<ViewResult>(resultat);
@@ -45,66 +33,90 @@ namespace OneCommerce.MVC.Tests.Controllers
         public void Create_OuvreUnFormulaireVide()
         {
             // Given la page d'inscription
+            IFixture generateur = Generateur();
+            Mock<IFideliteService> fideliteService = generateur.Freeze<Mock<IFideliteService>>();
+            FideliteController controleur = Controleur(generateur);
 
             // When
-            IActionResult resultat = _controller.Create();
+            IActionResult resultat = controleur.Create();
 
             // Then rien n'est demandé au service
             ViewResult vue = Assert.IsType<ViewResult>(resultat);
             Assert.IsType<Fidelite>(vue.Model);
-            _fideliteService.VerifyNoOtherCalls();
+            fideliteService.VerifyNoOtherCalls();
         }
 
         [Fact]
         public async Task Create_RendLeFormulaireQuandLeModeleEstInvalide()
         {
             // Given un modèle que la validation a rejeté
-            Fidelite inscription = _fixture.Create<Fidelite>();
-            _controller.ModelState.AddModelError(nameof(Fidelite.CourrielClient), "Le courriel est obligatoire");
+            IFixture generateur = Generateur();
+            Mock<IFideliteService> fideliteService = generateur.Freeze<Mock<IFideliteService>>();
+            FideliteController controleur = Controleur(generateur);
+
+            Fidelite inscription = generateur.Create<Fidelite>();
+            controleur.ModelState.AddModelError(nameof(Fidelite.CourrielClient), "Le courriel est obligatoire");
 
             // When
-            IActionResult resultat = await _controller.Create(inscription);
+            IActionResult resultat = await controleur.Create(inscription);
 
             // Then rien n'est inscrit
             ViewResult vue = Assert.IsType<ViewResult>(resultat);
             Assert.Same(inscription, vue.Model);
-            _fideliteService.Verify(s => s.CreateFideliteAsync(It.IsAny<Fidelite>()), Times.Never);
+            fideliteService.Verify(s => s.CreateFideliteAsync(It.IsAny<Fidelite>()), Times.Never);
         }
 
         [Fact]
         public async Task Create_MontreLeNumeroQuandLInscriptionAboutit()
         {
             // Given un service qui accepte l'inscription
-            Fidelite inscription = _fixture.Create<Fidelite>();
-            Fidelite carteCreee = _fixture.Create<Fidelite>();
-            _fideliteService
+            IFixture generateur = Generateur();
+            Mock<IFideliteService> fideliteService = generateur.Freeze<Mock<IFideliteService>>();
+            FideliteController controleur = Controleur(generateur);
+
+            Fidelite inscription = generateur.Create<Fidelite>();
+            Fidelite carteCreee = generateur.Create<Fidelite>();
+            fideliteService
                 .Setup(s => s.CreateFideliteAsync(It.IsAny<Fidelite>()))
                 .ReturnsAsync(carteCreee);
 
             // When
-            IActionResult resultat = await _controller.Create(inscription);
+            IActionResult resultat = await controleur.Create(inscription);
 
             // Then le visiteur repart avec son numéro
             ViewResult vue = Assert.IsType<ViewResult>(resultat);
             Assert.Equal(carteCreee.NumeroFidelite, vue.ViewData["NumeroFidelite"]);
-            _fideliteService.Verify(s => s.CreateFideliteAsync(inscription), Times.Once);
+            fideliteService.Verify(s => s.CreateFideliteAsync(inscription), Times.Once);
         }
 
         [Fact]
         public async Task Create_LeDitQuandLInscriptionEchoue()
         {
             // Given un service qui refuse l'inscription
-            _fideliteService
+            IFixture generateur = Generateur();
+            Mock<IFideliteService> fideliteService = generateur.Freeze<Mock<IFideliteService>>();
+            FideliteController controleur = Controleur(generateur);
+
+            fideliteService
                 .Setup(s => s.CreateFideliteAsync(It.IsAny<Fidelite>()))
                 .ReturnsAsync((Fidelite?)null);
 
             // When
-            IActionResult resultat = await _controller.Create(_fixture.Create<Fidelite>());
+            IActionResult resultat = await controleur.Create(generateur.Create<Fidelite>());
 
             // Then le visiteur lit pourquoi, et aucun numéro n'est affiché
             ViewResult vue = Assert.IsType<ViewResult>(resultat);
-            Assert.False(_controller.ModelState.IsValid);
+            Assert.False(controleur.ModelState.IsValid);
             Assert.Null(vue.ViewData["NumeroFidelite"]);
         }
+
+        private static IFixture Generateur() =>
+            new Fixture().Customize(new AutoMoqCustomization());
+
+        // Le contrôleur est bâti par son constructeur seul : laisser AutoFixture
+        // remplir ses propriétés revient à lui demander un ViewDataDictionary,
+        // qu'il ne sait pas construire.
+        private static FideliteController Controleur(IFixture generateur) =>
+            generateur.Build<FideliteController>().OmitAutoProperties().Create();
     }
 }
