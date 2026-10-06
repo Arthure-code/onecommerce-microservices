@@ -1,7 +1,7 @@
 # onecommerce-microservices
 
 [![Build](https://github.com/Arthure-code/onecommerce-microservices/actions/workflows/build.yml/badge.svg)](https://github.com/Arthure-code/onecommerce-microservices/actions/workflows/build.yml)
-[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=Arthure-code_onecommerce-microservices&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arthure-code_onecommerce-microservices)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arthure-code_onecommerce-microservices&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arthure-code_onecommerce-microservices)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Arthure-code_onecommerce-microservices&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Arthure-code_onecommerce-microservices)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Arthure-code_onecommerce-microservices&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=Arthure-code_onecommerce-microservices)
 [![Security rating](https://sonarcloud.io/api/project_badges/measure?project=Arthure-code_onecommerce-microservices&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Arthure-code_onecommerce-microservices)
