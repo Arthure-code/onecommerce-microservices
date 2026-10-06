@@ -66,10 +66,7 @@ namespace OneProduit.API.Controllers
             existant.Prix = produit.Prix;
             existant.Quantite = produit.Quantite;
             existant.Vedette = produit.Vedette;
-
-            // L'image ne change que si une nouvelle a été déposée.
-            if (!string.IsNullOrWhiteSpace(produit.Image))
-                existant.Image = produit.Image;
+            existant.Image = produit.Image;
 
             return Ok(existant);
         }

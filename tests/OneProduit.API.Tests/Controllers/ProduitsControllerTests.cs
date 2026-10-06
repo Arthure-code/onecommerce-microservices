@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using AutoFixture;
 using AutoFixture.AutoMoq;
@@ -91,30 +91,44 @@ namespace OneProduit.API.Tests.Controllers
         }
 
         [Fact]
-        public void UpdateProduit_ReecritLeProduitSansToucherALImage()
+        public void UpdateProduit_ReecritLeProduitAvecCeQuiEstEnvoye()
         {
-            // Given un produit du catalogue, et une modification sans image
+            // Given un produit du catalogue, et une modification complète
             IFixture generateur = Generateur();
             ProduitsController controleur = Controleur(generateur);
             Produit ajoute = ProduitAbsentDuCatalogue(generateur, controleur);
             controleur.AddProduit(ajoute);
 
             Produit modification = generateur.Build<Produit>()
-                .With(p => p.Image, string.Empty)
                 .With(p => p.Vedette, true)
                 .Create();
 
             // When
             ActionResult<Produit> resultat = controleur.UpdateProduit(ajoute.Id!.Value, modification);
 
-            // Then les champs changent et l'image reste celle d'avant
+            // Then
             OkObjectResult reponse = Assert.IsType<OkObjectResult>(resultat.Result);
             Produit produit = Assert.IsType<Produit>(reponse.Value);
             Assert.Equal(modification.Nom, produit.Nom);
             Assert.Equal(modification.Prix, produit.Prix);
             Assert.Equal(modification.Quantite, produit.Quantite);
+            Assert.Equal(modification.Image, produit.Image);
             Assert.True(produit.Vedette);
-            Assert.Equal(ajoute.Image, produit.Image);
+        }
+
+        [Fact]
+        public void UpdateProduit_RefuseUneImageAbsente()
+        {
+            // Given une modification dont l'image est vide
+            Produit modification = Generateur().Build<Produit>()
+                .With(p => p.Image, string.Empty)
+                .Create();
+
+            // When le modèle est validé, comme le fait la liaison HTTP
+            List<ValidationResult> erreurs = Valider(modification);
+
+            // Then la requête n'atteint pas le contrôleur
+            Assert.Contains(erreurs, e => e.MemberNames.Contains(nameof(Produit.Image)));
         }
 
         [Fact]
